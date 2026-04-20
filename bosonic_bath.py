@@ -31,7 +31,7 @@ psi0 = basis(2, 0) # ground state
 tmax = 30/omega0
 
 # ------------------Simulation------------------
-def simulate_tls_dynamics(psi0=psi0, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth):
+def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth):
     # time independent part of the Hamiltonian:
     H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
 
@@ -47,30 +47,51 @@ def simulate_tls_dynamics(psi0=psi0, time_steps=time_steps, solver_steps=solver_
     Q = sigmax() # coupling operator
     bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
     options = {"nsteps": solver_steps, "progress_bar": ''}
-    solver = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
+    solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
 
     # initial density matrix
     rho0 = psi0 * psi0.dag()
-
-    # run simulation
-    tlist = np.linspace(0, tmax, time_steps)
-    result = solver.run(rho0, tlist)
     
+    # run simulation
+    drive_steps = int(time_drive/tmax * time_steps)
+    tlist_drive = np.linspace(0, time_drive, drive_steps)
+    result_drive = solver_drive.run(rho0, tlist_drive)
+
+    # evolve post driving to observe relaxation
+    if tmax > time_drive:
+        tlist_relax = np.linspace(time_drive, tmax, time_steps - drive_steps)
+        solver_relax = HEOMSolver(H_sys, bath, max_depth=max_depth, options=options) # use static Hamiltonian for relaxation    
+        result_relax = solver_relax.run(result_drive.states[-1], tlist_relax)
+        result = [result_drive, result_relax]
+    else:
+        result = [result_drive, None]
+
     return result
     
 
 
 # -----------------Plotting the results-----------------
 def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
-    # get the bloch vector components from the expectation values of the operators
-    xs = expect(sigmax(), result.states)
-    ys = expect(sigmay(), result.states)
-    zs = expect(sigmaz(), result.states)    
+    # extract drive evolution
+    xs = expect(sigmax(), result[0].states)
+    ys = expect(sigmay(), result[0].states)
+    zs = expect(sigmaz(), result[0].states)  
+    t = result[0].times
+
+    # extract relaxation evolution if it exists
+    if result[1] is not None:
+        xs_relax = expect(sigmax(), result[1].states)
+        ys_relax = expect(sigmay(), result[1].states)
+        zs_relax = expect(sigmaz(), result[1].states)  
+        xs = np.concatenate((xs, xs_relax))
+        ys = np.concatenate((ys, ys_relax))
+        zs = np.concatenate((zs, zs_relax))  
+        t = np.concatenate((t, result[1].times))
 
     b = Bloch()
     b.view = [-45, 30]
     cmap = plt.get_cmap('inferno')  # choose a colormap
-    colors = cmap(np.divide(result.times, tmax))  # normalize time to [0, 1] for color mapping
+    colors = cmap(np.divide(t, tmax))  # normalize time to [0, 1] for color mapping
 
     for i in range(len(xs) - 1):
         segment = [[xs[i], xs[i+1]], 
@@ -96,7 +117,7 @@ def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
 
 
 def main():
-    result = simulate_tls_dynamics()
+    result = simulate_tls_dynamics(time_drive=1/omega0)
     plot_bloch_sphere(result)
 
 
