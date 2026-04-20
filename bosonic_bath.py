@@ -31,7 +31,12 @@ psi0 = basis(2, 0) # ground state
 tmax = 30/omega0
 
 # ------------------Simulation------------------
-def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth):
+def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax()):
+
+    # check that driving time is less than total simulation time
+    if time_drive > tmax:
+        raise ValueError("Driving time must be less than total simulation time.")
+
     # time independent part of the Hamiltonian:
     H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
 
@@ -44,9 +49,8 @@ def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, s
     H_tot = QobjEvo(H_tot, args={'omega_drive': omega_drive, 'Omega': Omega})
 
     # define bath and solver
-    Q = sigmax() # coupling operator
     bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
-    options = {"nsteps": solver_steps, "progress_bar": ''}
+    options = {"nsteps": solver_steps, "progress_bar": 'enhanced'}
     solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
 
     # initial density matrix
@@ -117,7 +121,7 @@ def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
 
 
 def main():
-    result = simulate_tls_dynamics(time_drive=1/omega0)
+    result = simulate_tls_dynamics(time_drive=15/omega0, Q=sigmax()+sigmaz())
     plot_bloch_sphere(result)
 
 
