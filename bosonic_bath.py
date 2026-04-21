@@ -1,9 +1,7 @@
-from qutip import basis, sigmax, sigmaz
+from qutip import *
 from qutip.solver.heom import DrudeLorentzBath
 from qutip.solver.heom import DrudeLorentzPadeBath
 from qutip.solver.heom import HEOMSolver
-from qutip import QobjEvo
-from qutip import *
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -13,7 +11,7 @@ Del = 0  # detuning term
 omega0 = 1.0  # GHZ frequency of the bath modes (normalized)
 Omega = 60*omega0  # GHz frequency of the driving field
 omega_drive = Omega/2.4048  # GHz frequency of the driving field (resonant)
-freq_list = np.linspace(omega_drive - 3, omega_drive + 3, 100) # driving freqs 
+freq_list = np.linspace(omega_drive - 3, omega_drive + 3, 800) # driving freqs 
 
 # Bath properties:
 gamma = omega0/2 # GHz cut off frequency
@@ -22,7 +20,7 @@ T = 0.5  # K temperature
 
 # solver parameters:
 Nk = 2 # expansion terms
-time_steps = 1000
+time_steps = 10000
 solver_steps = 15000
 max_depth = 5  # maximum hierarchy depth to retain
 
@@ -33,7 +31,7 @@ psi0 = basis(2, 0) # ground state
 tmax = 30/omega0
 
 # ------------------Simulation for 1 TLS------------------
-def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive):
+def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive):
     # check that driving time is less than total simulation time
     if time_drive > tmax:
         raise ValueError("Driving time must be less than total simulation time.")
@@ -63,10 +61,16 @@ def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, s
     result_drive = solver_drive.run(rho0, tlist_drive)
 
     # extract drive evolution
-    xs = expect(sigmax(), result_drive.states)
-    ys = expect(sigmay(), result_drive.states)
-    zs = expect(sigmaz(), result_drive.states)  
+    xs = np.zeros((time_steps))
+    ys = np.zeros((time_steps))
+    zs = np.zeros((time_steps))
     t = result_drive.times
+
+    for i in range(drive_steps):
+        rho_t = result_drive.states[i]
+        xs[i] = (rho_t * sigmax()).tr().real
+        ys[i] = (rho_t * sigmay()).tr().real
+        zs[i] = (rho_t * sigmaz()).tr().real
 
     # evolve post driving to observe relaxation
     if tmax > time_drive:
@@ -74,15 +78,12 @@ def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, s
         solver_relax = HEOMSolver(H_sys, bath, max_depth=max_depth, options=options) # use static Hamiltonian for relaxation    
         result_relax = solver_relax.run(result_drive.states[-1], tlist_relax)
 
-        # extract results and combine
-        xs_relax = expect(sigmax(), result_relax.states)
-        ys_relax = expect(sigmay(), result_relax.states)
-        zs_relax = expect(sigmaz(), result_relax.states)  
-        xs = np.concatenate((xs, xs_relax))
-        ys = np.concatenate((ys, ys_relax))
-        zs = np.concatenate((zs, zs_relax))  
+        for i in range(drive_steps, time_steps):
+            rho_t = result_relax.states[i - drive_steps]
+            xs[i] = (rho_t * sigmax()).tr().real
+            ys[i] = (rho_t * sigmay()).tr().real
+            zs[i] = (rho_t * sigmaz()).tr().real
         t = np.concatenate((t, result_relax.times))
-
 
     return (xs, ys, zs, t)
     
@@ -175,9 +176,9 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    # result = simulate_tls_dynamics(time_drive=10/omega0)
-    # plot_bloch_sphere(result)
-    plot_freq_sweep_map(time_drive=10/omega0)
+    result = simulate_tls_dynamics(time_drive=10/omega0)
+    plot_bloch_sphere(result)
+    # plot_freq_sweep_map(time_drive=10/omega0)
 
 if __name__ == "__main__":
     main()
