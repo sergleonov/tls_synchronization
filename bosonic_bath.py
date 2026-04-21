@@ -6,6 +6,7 @@ from qutip import QobjEvo
 from qutip import *
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 # ------------------System and bath parameters------------------
 Del = 0  # detuning term
@@ -50,7 +51,7 @@ def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, s
 
     # define bath and solver
     bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
-    options = {"nsteps": solver_steps, "progress_bar": 'enhanced'}
+    options = {"nsteps": solver_steps, "progress_bar": ''}
     solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
 
     # initial density matrix
@@ -133,7 +134,7 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
     zs_all = np.zeros((len(freq_list), time_steps))
 
     # iterate over drive frequencies
-    for i in range(len(freq_list)): 
+    for i in tqdm(range(len(freq_list)), desc="Rendering Subplots"): 
         xs, ys, zs, t = simulate_tls_dynamics(omega_drive=freq_list[i], psi0=psi0, time_drive=time_drive, time_steps=time_steps, 
                                                         solver_steps=solver_steps, max_depth=max_depth, Q=Q)
         if time is None: # initialize time array
@@ -174,9 +175,9 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    result = simulate_tls_dynamics(time_drive=10/omega0)
-    plot_bloch_sphere(result)
-    # plot_freq_sweep_map(time_drive=10/omega0)
+    # result = simulate_tls_dynamics(time_drive=10/omega0)
+    # plot_bloch_sphere(result)
+    plot_freq_sweep_map(time_drive=10/omega0)
 
 if __name__ == "__main__":
     main()
