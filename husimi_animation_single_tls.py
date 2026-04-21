@@ -10,20 +10,21 @@ from tqdm import tqdm
 from scipy.special import jv
 
 # ---------------------- Parameters ----------------------
-omega_tls = 3.75
-detuning = 0.0
+omega_tls = 3.75 # tls frequency
+detuning = 0.0 
 
-k_max = 10
+k_max = 10 # maximum bessel index
 
-Omega_amp = 0.5
-omega_d = 3.0
+Omega_amp = 0.5 # drive amplitude
+omega_d = 3.0 # drive frequency
 
-T_drive = 50.0
-T_total = 100.0
+T_drive = 50.0 # drive time
+T_total = 100.0 # total time
 dt = 0.5
 
 tlist = np.arange(0, T_total, dt)
-omega_d_vals = np.linspace(3.75, 4.0, 20)
+
+gamma = 0.002 # dissipation
 
 # ---------------------- Disorder ----------------------
 np.random.seed(18)
@@ -38,15 +39,14 @@ sz = sigmaz()
 
 sm = sigmam()
 
-# ---------------------- Dissipation ----------------------
-gamma = 0.002
-c_ops = [np.sqrt(gamma)*sm]
+c_ops = [np.sqrt(gamma)*sm] # collapse op
 
 # ---------------------- Pulse envelope ----------------------
 def pulse_env(t, args):
     return 1.0 if t <= T_drive else 0.0
 
 #-------------Hamiltonian--------------
+# eq. 14 from the paper
 def drive_z(t, args):
     z_drive = 0
     for k in range(1, k_max+1):
@@ -91,8 +91,8 @@ def husimi_Q(rho, theta_grid, phi_grid):
 
     return Q
 
-theta_grid = np.linspace(0, np.pi, 60)
-phi_grid = np.linspace(0, 2*np.pi, 60)
+theta_grid = np.linspace(0, np.pi, 100)
+phi_grid = np.linspace(0, 2*np.pi, 100)
 
 # ---------------------- Compute Q(t) ----------------------
 print("Computing Husimi-Q(t)...")
@@ -138,7 +138,6 @@ for t_idx in frames:
 
     t_now = tlist[t_idx]
 
-    # ON / OFF label
     if t_now <= T_drive:
         phase = "DRIVE ON"
         color = 'green'
