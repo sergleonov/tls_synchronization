@@ -1,5 +1,5 @@
 '''
-This script generates snapshot of the evolution of the Husimi function
+This script generates snapshot at the final time of the evolution of the Husimi function
  for a hamiltonian from eq. 14 in https://arxiv.org/pdf/2511.04339 with markovian assumption
 '''
 
