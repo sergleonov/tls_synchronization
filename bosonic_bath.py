@@ -61,36 +61,36 @@ def simulate_tls_dynamics(psi0=psi0, time_drive = tmax, time_steps=time_steps, s
     tlist_drive = np.linspace(0, time_drive, drive_steps)
     result_drive = solver_drive.run(rho0, tlist_drive)
 
+    # extract drive evolution
+    xs = expect(sigmax(), result_drive.states)
+    ys = expect(sigmay(), result_drive.states)
+    zs = expect(sigmaz(), result_drive.states)  
+    t = result_drive.times
+
     # evolve post driving to observe relaxation
     if tmax > time_drive:
         tlist_relax = np.linspace(time_drive, tmax, time_steps - drive_steps)
         solver_relax = HEOMSolver(H_sys, bath, max_depth=max_depth, options=options) # use static Hamiltonian for relaxation    
         result_relax = solver_relax.run(result_drive.states[-1], tlist_relax)
-        result = [result_drive, result_relax]
-    else:
-        result = [result_drive, None]
 
-    return result
+        # extract results and combine
+        xs_relax = expect(sigmax(), result_relax.states)
+        ys_relax = expect(sigmay(), result_relax.states)
+        zs_relax = expect(sigmaz(), result_relax.states)  
+        xs = np.concatenate((xs, xs_relax))
+        ys = np.concatenate((ys, ys_relax))
+        zs = np.concatenate((zs, zs_relax))  
+        t = np.concatenate((t, result_relax.times))
+
+
+    return (xs, ys, zs, t)
     
 
 
 # -----------------Plotting the results-----------------
 def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
-    # extract drive evolution
-    xs = expect(sigmax(), result[0].states)
-    ys = expect(sigmay(), result[0].states)
-    zs = expect(sigmaz(), result[0].states)  
-    t = result[0].times
-
-    # extract relaxation evolution if it exists
-    if result[1] is not None:
-        xs_relax = expect(sigmax(), result[1].states)
-        ys_relax = expect(sigmay(), result[1].states)
-        zs_relax = expect(sigmaz(), result[1].states)  
-        xs = np.concatenate((xs, xs_relax))
-        ys = np.concatenate((ys, ys_relax))
-        zs = np.concatenate((zs, zs_relax))  
-        t = np.concatenate((t, result[1].times))
+    
+    xs, ys, zs, t = result
 
     b = Bloch()
     b.view = [-45, 30]
