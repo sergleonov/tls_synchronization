@@ -5,6 +5,7 @@ from qutip.solver.heom import HEOMSolver
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from scipy.special import jv
 
 # ------------------System and bath parameters------------------
 Del = 0  # detuning term
@@ -12,6 +13,8 @@ omega0 = 1.0  # GHZ frequency of the bath modes (normalized)
 Omega = 60*omega0  # GHz frequency of the driving field
 omega_drive = Omega/2.4048  # GHz frequency of the driving field (resonant)
 freq_list = np.linspace(omega_drive - 3, omega_drive + 3, 800) # driving freqs 
+
+k_max = 10 # max bessel index for markovian evolution
 
 # Bath properties:
 gamma = omega0/2 # GHz cut off frequency
@@ -31,36 +34,73 @@ psi0 = basis(2, 0) # ground state
 tmax = 30/omega0
 
 # ------------------Simulation for 1 TLS------------------
-def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive):
+def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive, markovian=False):
     # check that driving time is less than total simulation time
     if time_drive > tmax:
         raise ValueError("Driving time must be less than total simulation time.")
 
-    # time independent part of the Hamiltonian:
-    H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
-
     def pulse_env(t, args): # pulse envelope control function
         return 1.0 if t <= time_drive else 0.0
 
-    # time dependent part of the Hamiltonian:
-    def H_coeff(t, args):
-        return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t) * pulse_env(t, args)
-    H_tot = [H_sys, [sigmax(), H_coeff]]
-
-    # total Hamiltonian
-    H_tot = QobjEvo(H_tot, args={'omega_drive': omega_drive, 'Omega': Omega})
-
-    # define bath and solver
-    bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
-    options = {"nsteps": solver_steps, "progress_bar": ''}
-    solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
-
-    # initial density matrix
-    rho0 = psi0 * psi0.dag()
-    
-    # run simulation
+    # time vector
     tlist = np.linspace(0, tmax, time_steps)
-    result = solver_drive.run(rho0, tlist)
+
+    if not markovian:
+        # time independent part of the Hamiltonian:
+        H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
+        # time dependent part of the Hamiltonian:
+        def H_coeff(t, args):
+            return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t) * pulse_env(t, args)
+        H_tot = [H_sys, [sigmax(), H_coeff]]
+
+        # total Hamiltonian
+        H_tot = QobjEvo(H_tot, args={'omega_drive': omega_drive, 'Omega': Omega})
+
+        # define bath and solver
+        bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
+        options = {"nsteps": solver_steps, "progress_bar": ''}
+        solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
+
+        # initial density matrix
+        rho0 = psi0 * psi0.dag()
+        
+        # run simulation
+        result = solver_drive.run(rho0, tlist)
+    else:
+        # operators
+        sx = sigmax()
+        sy = sigmay()
+        sz = sigmaz()
+
+        sm = sigmam()
+
+        # dissipation
+        c_ops = [np.sqrt(gamma)*sm] # collapse operator
+
+        # compile Hamiltonian
+        def drive_z(t, args):
+            z_drive = 0
+            for k in range(1, k_max+1):
+                z_drive += omega0 * jv(2*k, Omega/omega_drive) * np.cos(2*k * omega_drive * t) * pulse_env(t, args)
+            return z_drive
+
+        def drive_y(t, args):
+            y_drive = 0
+            for k in range(0, k_max+1):
+                y_drive += omega0 * jv(2*k + 1, Omega/omega_drive) * np.sin((2*k + 1) * omega_drive * t) * pulse_env(t, args)
+            return y_drive
+
+        H_static = 0.5 * omega0 * jv(0, Omega/omega_drive) * sz + 0.5 * Del * sx
+
+        H = [H_static, [sz, drive_z], [sy, drive_y]]
+
+        result = mesolve(
+            H,
+            psi0,
+            tlist,
+            c_ops,
+            []
+        )
 
     # extract drive evolution
     xs = np.zeros((time_steps))
@@ -163,7 +203,7 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    result = simulate_tls_dynamics()
+    result = simulate_tls_dynamics(time_drive=10/omega0, markovian=True)
     plot_bloch_sphere(result)
     # plot_freq_sweep_map(time_drive=10/omega0)
 
