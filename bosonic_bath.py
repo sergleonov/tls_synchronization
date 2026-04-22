@@ -39,9 +39,12 @@ def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, sol
     # time independent part of the Hamiltonian:
     H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
 
+    def pulse_env(t, args): # pulse envelope control function
+        return 1.0 if t <= time_drive else 0.0
+
     # time dependent part of the Hamiltonian:
     def H_coeff(t, args):
-        return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t)
+        return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t) * pulse_env(t, args)
     H_tot = [H_sys, [sigmax(), H_coeff]]
 
     # total Hamiltonian
@@ -56,38 +59,22 @@ def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, sol
     rho0 = psi0 * psi0.dag()
     
     # run simulation
-    drive_steps = int(time_drive/tmax * time_steps)
-    tlist_drive = np.linspace(0, time_drive, drive_steps)
-    result_drive = solver_drive.run(rho0, tlist_drive)
+    tlist = np.linspace(0, tmax, time_steps)
+    result = solver_drive.run(rho0, tlist)
 
     # extract drive evolution
     xs = np.zeros((time_steps))
     ys = np.zeros((time_steps))
     zs = np.zeros((time_steps))
-    t = result_drive.times
+    t = result.times
 
-    for i in range(drive_steps):
-        rho_t = result_drive.states[i]
+    for i in range(time_steps):
+        rho_t = result.states[i]
         xs[i] = (rho_t * sigmax()).tr().real
         ys[i] = (rho_t * sigmay()).tr().real
         zs[i] = (rho_t * sigmaz()).tr().real
 
-    # evolve post driving to observe relaxation
-    if tmax > time_drive:
-        tlist_relax = np.linspace(time_drive, tmax, time_steps - drive_steps)
-        solver_relax = HEOMSolver(H_sys, bath, max_depth=max_depth, options=options) # use static Hamiltonian for relaxation    
-        result_relax = solver_relax.run(result_drive.states[-1], tlist_relax)
-
-        for i in range(drive_steps, time_steps):
-            rho_t = result_relax.states[i - drive_steps]
-            xs[i] = (rho_t * sigmax()).tr().real
-            ys[i] = (rho_t * sigmay()).tr().real
-            zs[i] = (rho_t * sigmaz()).tr().real
-        t = np.concatenate((t, result_relax.times))
-
     return (xs, ys, zs, t)
-    
-
 
 # -----------------Plotting the Bloch sphere-----------------
 def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
@@ -176,7 +163,7 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    result = simulate_tls_dynamics(time_drive=10/omega0)
+    result = simulate_tls_dynamics()
     plot_bloch_sphere(result)
     # plot_freq_sweep_map(time_drive=10/omega0)
 
