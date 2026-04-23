@@ -9,16 +9,16 @@ from scipy.special import jv
 
 # ------------------System and bath parameters------------------
 Del = 0  # detuning term
-omega0 = 1.0  # GHZ frequency of the bath modes (normalized)
-Omega = 60*omega0  # GHz frequency of the driving field
-omega_drive = Omega/2.4048  # GHz frequency of the driving field (resonant)
+omega0 = 3.7  # GHZ frequency of the bath modes (normalized)
+Omega = 0.5  # GHz frequency of the driving field
+omega_drive = 3.6  # GHz frequency of the driving field (resonant)
 freq_list = np.linspace(omega_drive - 3, omega_drive + 3, 800) # driving freqs 
 
 k_max = 10 # max bessel index for markovian evolution
 
 # Bath properties:
 gamma = omega0/2 # GHz cut off frequency
-lam = omega0  # coupling strength
+lam = 1.0  # coupling strength
 T = 0.5  # K temperature
 
 # solver parameters:
@@ -34,7 +34,7 @@ psi0 = basis(2, 0) # ground state
 tmax = 30/omega0
 
 # ------------------Simulation for 1 TLS------------------
-def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive, markovian=False):
+def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, solver_steps=solver_steps, max_depth=max_depth, Q=sigmax(), omega_drive=omega_drive):
     # check that driving time is less than total simulation time
     if time_drive > tmax:
         raise ValueError("Driving time must be less than total simulation time.")
@@ -45,81 +45,115 @@ def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, sol
     # time vector
     tlist = np.linspace(0, tmax, time_steps)
 
-    if not markovian:
-        # time independent part of the Hamiltonian:
-        H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
-        # time dependent part of the Hamiltonian:
-        def H_coeff(t, args):
-            return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t) * pulse_env(t, args)
-        H_tot = [H_sys, [sigmax(), H_coeff]]
+    # ------------ Simulate non-Markovian dynamics using HEOM solver ------------
 
-        # total Hamiltonian
-        H_tot = QobjEvo(H_tot, args={'omega_drive': omega_drive, 'Omega': Omega})
+    # time independent part of the Hamiltonian:
+    H_sys = 0.5 * omega0 * sigmaz() + 0.5 * Del * sigmax() # static Hamiltonian
+    # time dependent part of the Hamiltonian:
+    def H_coeff(t, args):
+        return 0.5 * args["Omega"] * np.cos(args["omega_drive"] * t) * pulse_env(t, args)
+    H_non_mark = [H_sys, [sigmax(), H_coeff]]
 
-        # define bath and solver
-        bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
-        options = {"nsteps": solver_steps, "progress_bar": ''}
-        solver_drive = HEOMSolver(H_tot, bath, max_depth=max_depth, options=options)
+    # total Hamiltonian
+    H_non_mark = QobjEvo(H_non_mark, args={'omega_drive': omega_drive, 'Omega': Omega})
 
-        # initial density matrix
-        rho0 = psi0 * psi0.dag()
-        
-        # run simulation
-        result = solver_drive.run(rho0, tlist)
-    else:
-        # operators
-        sx = sigmax()
-        sy = sigmay()
-        sz = sigmaz()
+    # define bath and solver
+    bath = DrudeLorentzPadeBath(Q, lam=lam, gamma=gamma, T=T, Nk=Nk)
+    options = {"nsteps": solver_steps, "progress_bar": ''}
+    solver_drive = HEOMSolver(H_non_mark, bath, max_depth=max_depth, options=options)
 
-        sm = sigmam()
+    # initial density matrix
+    rho0 = psi0 * psi0.dag()
+    
+    # run simulation
+    result_non_mark = solver_drive.run(rho0, tlist)
 
-        # dissipation
-        c_ops = [np.sqrt(gamma)*sm] # collapse operator
+    # ------------ Simulate Markovian dynamics using Lindblad master equation ------------
 
-        # compile Hamiltonian
-        def drive_z(t, args):
-            z_drive = 0
-            for k in range(1, k_max+1):
-                z_drive += omega0 * jv(2*k, Omega/omega_drive) * np.cos(2*k * omega_drive * t) * pulse_env(t, args)
-            return z_drive
+    # operators
+    sx = sigmax()
+    sy = sigmay()
+    sz = sigmaz()
 
-        def drive_y(t, args):
-            y_drive = 0
-            for k in range(0, k_max+1):
-                y_drive += omega0 * jv(2*k + 1, Omega/omega_drive) * np.sin((2*k + 1) * omega_drive * t) * pulse_env(t, args)
-            return y_drive
+    sm = sigmam()
 
-        H_static = 0.5 * omega0 * jv(0, Omega/omega_drive) * sz + 0.5 * Del * sx
+    # dissipation
+    gamma_dissipation = lam
+    c_ops = [np.sqrt(gamma_dissipation)*sm] # collapse operator
 
-        H = [H_static, [sz, drive_z], [sy, drive_y]]
+    # compile Hamiltonian
+    def drive_z(t, args):
+        z_drive = 0
+        for k in range(1, k_max+1):
+            z_drive += omega0 * jv(2*k, Omega/omega_drive) * np.cos(2*k * omega_drive * t) * pulse_env(t, args)
+        return z_drive
 
-        result = mesolve(
-            H,
-            psi0,
-            tlist,
-            c_ops,
-            []
-        )
+    def drive_y(t, args):
+        y_drive = 0
+        for k in range(0, k_max+1):
+            y_drive += omega0 * jv(2*k + 1, Omega/omega_drive) * np.sin((2*k + 1) * omega_drive * t) * pulse_env(t, args)
+        return y_drive
+
+    H_static = 0.5 * omega0 * jv(0, Omega/omega_drive) * sz + 0.5 * Del * sx
+
+    H = [H_static, [sz, drive_z], [sy, drive_y]]
+
+    result_mark = mesolve(
+        H,
+        psi0,
+        tlist,
+        c_ops,
+        []
+    )
 
     # extract drive evolution
-    xs = np.zeros((time_steps))
-    ys = np.zeros((time_steps))
-    zs = np.zeros((time_steps))
-    t = result.times
+    xs_mark = np.zeros((time_steps))
+    ys_mark = np.zeros((time_steps))
+    zs_mark = np.zeros((time_steps))
+
+    xs_non_mark = np.zeros((time_steps))
+    ys_non_mark = np.zeros((time_steps))
+    zs_non_mark = np.zeros((time_steps))
+
+    t = result_mark.times
 
     for i in range(time_steps):
-        rho_t = result.states[i]
-        xs[i] = (rho_t * sigmax()).tr().real
-        ys[i] = (rho_t * sigmay()).tr().real
-        zs[i] = (rho_t * sigmaz()).tr().real
+        rho_t_mark = result_mark.states[i]
+        xs_mark[i] = (rho_t_mark * sigmax()).tr().real
+        ys_mark[i] = (rho_t_mark * sigmay()).tr().real
+        zs_mark[i] = (rho_t_mark * sigmaz()).tr().real
 
-    return (xs, ys, zs, t)
+        rho_t_non_mark = result_non_mark.states[i]
+        xs_non_mark[i] = (rho_t_non_mark * sigmax()).tr().real
+        ys_non_mark[i] = (rho_t_non_mark * sigmay()).tr().real
+        zs_non_mark[i] = (rho_t_non_mark * sigmaz()).tr().real
+
+    data_mark = {
+        'xs': xs_mark,
+        'ys': ys_mark,
+        'zs': zs_mark,
+        't': t,
+        'markovian': True
+    }
+
+    data_non_mark = {
+        'xs': xs_non_mark,
+        'ys': ys_non_mark,
+        'zs': zs_non_mark,
+        't': t,
+        'markovian': False
+    }
+
+    return data_non_mark, data_mark
 
 # -----------------Plotting the Bloch sphere-----------------
 def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
     
-    xs, ys, zs, t = result
+    # extract data
+    xs = result['xs']
+    ys = result['ys']
+    zs = result['zs']
+    t = result['t']
 
     b = Bloch()
     b.view = [-45, 30]
@@ -203,8 +237,8 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    result = simulate_tls_dynamics(time_drive=10/omega0, markovian=True)
-    plot_bloch_sphere(result)
+    result_non_mark, result_mark = tqdm(simulate_tls_dynamics(), desc="Simulating TLS Dynamics")
+    plot_bloch_sphere(result_non_mark, filename="bloch_sphere_nonmarkovian.png")
     # plot_freq_sweep_map(time_drive=10/omega0)
 
 if __name__ == "__main__":
