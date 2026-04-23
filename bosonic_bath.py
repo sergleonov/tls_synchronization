@@ -144,41 +144,40 @@ def simulate_tls_dynamics(psi0=psi0, time_drive=tmax, time_steps=time_steps, sol
         'markovian': False
     }
 
-    return data_non_mark, data_mark
+    return [data_non_mark, data_mark]
 
 # -----------------Plotting the Bloch sphere-----------------
-def plot_bloch_sphere(result, tmax=tmax, filename="bloch_sphere.png"):
+def plot_bloch_sphere(results, tmax=tmax, filename="bloch_sphere.png"):
     
-    # extract data
-    xs = result['xs']
-    ys = result['ys']
-    zs = result['zs']
-    t = result['t']
+    # plot two bloch spheres
+    fig = plt.figure(figsize=(12, 6))
+    axs = [fig.add_subplot(121, projection='3d'), fig.add_subplot(122, projection='3d')]
+    
+    fig.suptitle("TLS Dynamics on the Bloch Sphere", fontsize=16) 
 
-    b = Bloch()
-    b.view = [-45, 30]
-    cmap = plt.get_cmap('inferno')  # choose a colormap
-    colors = cmap(np.divide(t, tmax))  # normalize time to [0, 1] for color mapping
+    for result in results:
+        # extract data
+        xs = result['xs']
+        ys = result['ys']
+        zs = result['zs']
+        t = result['t']
 
-    for i in range(len(xs) - 1):
-        segment = [[xs[i], xs[i+1]], 
-                [ys[i], ys[i+1]], 
-                [zs[i], zs[i+1]]]
-        b.add_points(segment, meth='l') # 'l' tells QuTiP to render as a line  
-    colors[0] = [0, 0.5, 1, 1] # color first point differently for better visibility
-    b.point_color = colors
-    b.render() 
-    fig = b.fig
-    ax = b.axes
+        b = Bloch(fig, axs[0] if not result['markovian'] else axs[1])
+        b.view = [-45, 30]
+        cmap = plt.get_cmap('inferno')  # choose a colormap
+        colors = cmap(np.divide(t, tmax))  # normalize time to [0, 1] for color mapping
 
-    # add colorbar and save
-    ax.set_position([0.0, 0.1, 0.7, 0.8]) 
-    cax = fig.add_axes([0.85, 0.2, 0.03, 0.6]) 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
-    sm.set_array([])
-    cbar = fig.colorbar(sm, cax=cax)
-    cbar.set_label('Time', rotation=270, labelpad=15)
-    plt.subplots_adjust(right=0.8)
+        for i in range(len(xs) - 1):
+            segment = [[xs[i], xs[i+1]], 
+                    [ys[i], ys[i+1]], 
+                    [zs[i], zs[i+1]]]
+            b.add_points(segment, meth='l') # 'l' tells QuTiP to render as a line  
+        colors[0] = [0, 0.5, 1, 1] # color first point differently for better visibility
+        b.point_color = colors
+        b.render()
+
+    axs[0].set_title("Non-Markovian Evolution", fontsize=14)
+    axs[1].set_title("Markovian Evolution", fontsize=14)
 
     plt.savefig(filename)
 
@@ -237,8 +236,8 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 
 def main():
-    result_non_mark, result_mark = tqdm(simulate_tls_dynamics(), desc="Simulating TLS Dynamics")
-    plot_bloch_sphere(result_non_mark, filename="bloch_sphere_nonmarkovian.png")
+    results = tqdm(simulate_tls_dynamics(), desc="Simulating TLS Dynamics")
+    plot_bloch_sphere(results, filename="bloch_sphere_nonmarkovian.png")
     # plot_freq_sweep_map(time_drive=10/omega0)
 
 if __name__ == "__main__":
