@@ -3,6 +3,8 @@ This script generates animations of the evolution of the Husimi function
  for a hamiltonian from eq. 14 in https://arxiv.org/pdf/2511.04339
 '''
 
+# ffmpeg -framerate 10 -i animation/husimi_frame_%03d.png -c:v libx264 -pix_fmt yuv420p husimi_animation.mp4
+
 import numpy as np
 import matplotlib.pyplot as plt
 from qutip import *
@@ -18,7 +20,7 @@ detuning = 0.0
 k_max = 10 # maximum bessel index
 
 Omega_amp = 0.5 # drive amplitude
-omega_d = 3.0 # drive frequency
+omega_d = 3.75 # drive frequency
 
 T_drive = 40.0 # drive time
 T_total = 80.0 # total time
@@ -35,9 +37,9 @@ max_depth = 5  # maximum hierarchy depth to retain
 coupling_op = sigmax()
 Temp = 0.5  # K temperature
 lam = 0.02  # coupling strength
-omega_cut = omega_tls/2 # GHz cut off frequency
+omega_cut = 5.0 # GHz cut off frequency
 
-SAVE_ANIMATION = True
+SAVE_ANIMATION = False
 
 # ---------------------- Disorder ----------------------
 np.random.seed(18)

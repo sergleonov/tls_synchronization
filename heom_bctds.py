@@ -114,7 +114,7 @@ for Omega_amp in Omega_list:
             H_full,
             [bath],
             max_depth=max_depth,
-            options={"nsteps": 4000, "rtol": 1e-6, "atol": 1e-7}
+            options={"nsteps": 4000, "rtol": 1e-6, "atol": 1e-7, "progress_bar": ''},
         )
 
         result = solver.run(
@@ -128,7 +128,7 @@ for Omega_amp in Omega_list:
 
     results_all.append((exc_data, sp_data))
 
-print("\n:white_check_mark: HEOM simulation complete.\n")
+print("\nHEOM simulation complete.\n")
 
 # ---------------------- Plot ⟨S+S-⟩ ----------------------
 fig, ax = plt.subplots(figsize=(7,5))
