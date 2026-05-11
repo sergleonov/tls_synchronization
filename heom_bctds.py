@@ -14,12 +14,12 @@ J = 0.02 # interaction strength
 
 Omega_amp = 0.2
 
-T_total = 150 # ns
+T_total = 1600 # ns
 T_drive = 100.0   # ns
 dt = 0.5 # ns
 tlist = np.arange(0, T_total, dt)
 n_time = len(tlist)
-omega_d_vals = np.linspace(3.0, 5.0, 200)
+omega_d_vals = np.linspace(3.0, 5.0, 500)
 
 
 # ---------------------- Disorder ----------------------
@@ -61,7 +61,7 @@ lam = 0.001   # coupling strength
 gamma_bath = max(omega_tls_1_dis, omega_tls_2_dis) # bath cutoff frequency
 T = 0.5   # temperature
 
-Nk = 3
+Nk = 2
 max_depth = 5
 
 bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
@@ -104,6 +104,35 @@ def compute_heom(omega_d):
 
     return np.real(result.expect[0]), result.expect[1]
 
+def compute_mark(omega_d):
+
+    H_full = QobjEvo(
+        [H_static,
+        [sx1 + sx2, drive_coeff]],
+        args={
+            'omega_d': omega_d,
+            'Omega': Omega_amp,
+            'T_drive': T_drive
+        }
+    )
+
+    c_ops = [np.sqrt(lam) * collective_sm]
+
+    # initial state
+    evals, evecs = H_static.eigenstates()
+    psi0 = evecs[0]
+    
+    result = mesolve(
+        H_full,
+        psi0,
+        tlist,
+        c_ops,
+        e_ops=[collective_excitation, collective_sp],
+        options={"nsteps": 5000, "progress_bar": ''},
+    )
+
+    return np.real(result.expect[0]), result.expect[1]
+
 print(f"\nRunning Ω = {Omega_amp} GHz ...")
 
 exc_data = np.zeros((len(omega_d_vals), n_time))
@@ -116,42 +145,62 @@ with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as e
                                          desc="HEOM simulations")):
         exc_data[idx, :] = exc
         sp_data[idx, :] = sp
+    
+    results_heom = (exc_data, sp_data)
+     
+    for idx, (exc, sp) in enumerate(tqdm(executor.map(compute_mark, omega_d_vals),
+                                         total=len(omega_d_vals),
+                                         desc="Markovian simulations")):
+        exc_data[idx, :] = exc
+        sp_data[idx, :] = sp
+    
+    results_mark = (exc_data, sp_data)
 
-results_all = (exc_data, sp_data)
 
-print("\nHEOM simulation complete.\n")
+print("\nSimulation complete.\n")
 
 # ---------------------- Plot ⟨S+S-⟩ ----------------------
 os.makedirs("bctds",exist_ok=True)
+gridspec = {'width_ratios': [1, 1, 0.1]}
 
-fig, ax = plt.subplots(figsize=(7,5))
-im = ax.imshow(np.transpose(results_all[0]),
+fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+im0 = ax[0].imshow(np.transpose(results_mark[0]),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
-ax.set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
-ax.set_xlabel("Drive Frequency (GHz)")
-ax.set_ylabel("Time (ns)")
-plt.colorbar(im, ax=ax)
+ax[0].set_title("⟨S₊S₋⟩ (Markovian, square pulse)")
+ax[0].set_xlabel("Drive Frequency (GHz)")
+ax[0].set_ylabel("Time (ns)")
+im1 = ax[1].imshow(np.transpose(results_heom[0]),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+               origin='lower', aspect='auto', cmap='inferno')
+ax[1].set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
+ax[1].set_xlabel("Drive Frequency (GHz)")
+ax[1].set_ylabel("Time (ns)")
+cb1 = fig.colorbar(im1, cax=ax[2])
+cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
 plt.tight_layout()
 plt.savefig("bctds/heom_exc_map.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
-fig, ax = plt.subplots(figsize=(7,5))
-im = ax.imshow(np.transpose(np.abs(results_all[1])),
+fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+im0 = ax[0].imshow(np.transpose(np.abs(results_mark[1])),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
-ax.set_title("|⟨S₊⟩| (HEOM, square pulse)")
-ax.set_xlabel("Drive Frequency (GHz)")
-ax.set_ylabel("Time (ns)")
-plt.colorbar(im, ax=ax)
+ax[0].set_title("|⟨S₊⟩| (Markovian, square pulse)")
+ax[0].set_xlabel("Drive Frequency (GHz)")
+ax[0].set_ylabel("Time (ns)")
+im1 = ax[1].imshow(np.transpose(np.abs(results_heom[1])),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+               origin='lower', aspect='auto', cmap='inferno')
+ax[1].set_title("|⟨S₊⟩| (HEOM, square pulse)")
+ax[1].set_xlabel("Drive Frequency (GHz)")
+ax[1].set_ylabel("Time (ns)")
+cb2 = fig.colorbar(im1, cax=ax[2])
+cb2.set_label(r"$|\langle \sigma^{+} \rangle|$ (arb.)", labelpad=14)
 plt.tight_layout()
 plt.savefig("bctds/heom_sp_map.png")
 
-# ---------------------- FFT prep ----------------------
-window_fn = windows.hann(n_time)
-window_rms = np.sqrt(np.mean(window_fn**2))
-N_pad = 2**13
-
+# ---------------------- FFT ----------------------
 def smooth_envelope(amplitude, fraction=0.02):
     N = len(amplitude)
     win_len = int(max(3, min(N-1, np.round(N * fraction))))
@@ -160,48 +209,69 @@ def smooth_envelope(amplitude, fraction=0.02):
     kernel = np.ones(win_len) / win_len
     return np.convolve(amplitude, kernel, mode='same')
 
-# ---------------------- FFT ----------------------
-fft_data = []
-sp_data = results_all[1]
+def compute_fft(omega_d, sp_t): 
 
-for idx, omega_d in enumerate(omega_d_vals):
-    Splus_t = sp_data[idx, :]
+    window_fn = windows.hann(n_time)
+    window_rms = np.sqrt(np.mean(window_fn**2))
+    N_pad = 2**13
 
-    LO = np.exp(-1j * omega_d * tlist)
-    demod = Splus_t * LO
+    fft_data = []
 
-    phi = np.angle(demod)
-    amp = np.abs(demod)
-    env = smooth_envelope(amp)
+    for idx, omega_d in enumerate(omega_d_vals):
+        Splus_t = sp_t[idx, :]
 
-    phi_weighted = phi * env
-    phi_win = phi_weighted * window_fn
+        LO = np.exp(-1j * omega_d * tlist)
+        demod = Splus_t * LO
 
-    fft_vals = np.fft.rfft(phi_win, n=N_pad)
-    fft_amp = np.abs(fft_vals) / window_rms
+        phi = np.angle(demod)
+        amp = np.abs(demod)
+        env = smooth_envelope(amp)
 
-    fft_data.append(fft_amp)
+        phi_weighted = phi * env
+        phi_win = phi_weighted * window_fn
 
-fft_data = np.array(fft_data)
-fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
+        fft_vals = np.fft.rfft(phi_win, n=N_pad)
+        fft_amp = np.abs(fft_vals) / window_rms
 
-# limit the plot to observe the features
-fmax = 1 # GHz
-idx_max = np.searchsorted(fft_freqs, fmax) 
+        fft_data.append(fft_amp)
 
-fft_data = fft_data[:, :idx_max]
-fft_freqs = fft_freqs[:idx_max]
+    fft_data = np.array(fft_data)
+    fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
 
-# plot cropped data
-fig, ax = plt.subplots(figsize=(7,5))
-im = ax.imshow(fft_data.T,
-               extent=[omega_d_vals[0], omega_d_vals[-1],
-                       fft_freqs[0], fft_freqs[-1]],
-               origin='lower', aspect='auto', cmap='Oranges')
-ax.set_title("FFT of phase*env (HEOM, square pulse)")
-ax.set_xlabel("Drive Frequency (GHz)")
-ax.set_ylabel("FFT Frequency (GHz)")
-plt.colorbar(im, ax=ax)
+    # limit the plot to observe the features
+    fmax = 0.1 # GHz
+    idx_max = np.searchsorted(fft_freqs, fmax) 
+
+    fft_data = fft_data[:, :idx_max]
+    fft_freqs = fft_freqs[:idx_max]
+
+    return fft_freqs, fft_data
+
+# compute FFT data
+sp_mark = results_mark[1]
+sp_heom = results_heom[1]
+
+fft_freqs_mark, fft_data_mark = compute_fft(omega_d_vals, sp_mark)
+fft_freqs_heom, fft_data_heom = compute_fft(omega_d_vals, sp_heom)
+
+fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+im0 = ax[0].imshow(fft_data_mark.T,
+                    extent=[omega_d_vals[0], omega_d_vals[-1],
+                            fft_freqs_mark[0], fft_freqs_mark[-1]],
+                    origin='lower', aspect='auto', cmap='Oranges')
+ax[0].set_title("FFT of phase*env (Markovian, square pulse)")
+ax[0].set_xlabel("Drive Frequency (GHz)")
+ax[0].set_ylabel("FFT Frequency (GHz)")
+
+im1 = ax[1].imshow(fft_data_heom.T,
+                    extent=[omega_d_vals[0], omega_d_vals[-1],
+                            fft_freqs_heom[0], fft_freqs_heom[-1]],
+                    origin='lower', aspect='auto', cmap='Oranges')
+ax[1].set_title("FFT of phase*env (HEOM, square pulse)")
+ax[1].set_xlabel("Drive Frequency (GHz)")
+ax[1].set_ylabel("FFT Frequency (GHz)")
+cb3 = fig.colorbar(im1, cax=ax[2])
+cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
 plt.tight_layout()
 plt.savefig("bctds/heom_fft_map.png")
 plt.show()
