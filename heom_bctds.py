@@ -179,7 +179,7 @@ ax[1].set_ylabel("Time (ns)")
 cb1 = fig.colorbar(im1, cax=ax[2])
 cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig("bctds/heom_exc_map.png")
+plt.savefig(f"bctds/heom_exc_map_{gamma_bath}.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
@@ -198,7 +198,7 @@ ax[1].set_ylabel("Time (ns)")
 cb2 = fig.colorbar(im1, cax=ax[2])
 cb2.set_label(r"$|\langle \sigma^{+} \rangle|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig("bctds/heom_sp_map.png")
+plt.savefig(f"bctds/heom_sp_map_{gamma_bath}.png")
 
 # ---------------------- FFT ----------------------
 def smooth_envelope(amplitude, fraction=0.02):
@@ -273,6 +273,6 @@ ax[1].set_ylabel("FFT Frequency (GHz)")
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig("bctds/heom_fft_map.png")
+plt.savefig(f"bctds/heom_fft_map_{gamma_bath}.png")
 plt.show()
 print("Done.")
