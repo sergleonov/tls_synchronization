@@ -23,7 +23,7 @@ Omega_amp = 0.5 # drive amplitude
 omega_d = 3.75 # drive frequency
 
 T_drive = 40.0 # drive time
-T_total = 80.0 # total time
+T_total = 200.0 # total time
 dt = 0.5 # time step
 tlist = np.arange(0, T_total, dt)
 time_steps = len(tlist)
@@ -37,15 +37,15 @@ max_depth = 5  # maximum hierarchy depth to retain
 coupling_op = sigmax()
 Temp = 0.5  # K temperature
 lam = 0.02  # coupling strength
-omega_cut = 5.0 # GHz cut off frequency
+omega_cut = omega_tls # GHz cut off frequency
 
-SAVE_ANIMATION = False
+SAVE_ANIMATION = True
 
 # ---------------------- Disorder ----------------------
 np.random.seed(18)
-omega_tls += np.random.normal(0, 0.05)
+# omega_tls += np.random.normal(0, 0.05)
 
-print("Disorder applied.")
+# print("Disorder applied.")
 
 # ---------------------- Operators ----------------------
 sx = sigmax()
@@ -97,8 +97,8 @@ heom_solver = HEOMSolver(H_non_mark, bath, max_depth=max_depth, options=options)
 #-------------Initial state--------------
 psi0 = H0_mark.groundstate()[1]
 rho0 = psi0 * psi0.dag() # initial density matrix
-#-------------Solve--------------
 
+#-------------Solve--------------
 # Markovian dynamics using Lindblad master equation
 result_mark = mesolve(
     H,
@@ -214,6 +214,6 @@ for t_idx in range(time_steps):
 
     # save if needed
     if SAVE_ANIMATION:
-        plt.savefig(f"animation/husimi_frame_{t_idx:03d}.png")
+        plt.savefig(f"animation/husimi_frame_{t_idx:04d}.png")
     plt.pause(pause_time)
 plt.show()

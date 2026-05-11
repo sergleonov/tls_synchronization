@@ -9,15 +9,15 @@ from scipy.special import jv
 
 # ------------------System and bath parameters------------------
 Del = 0  # detuning term
-omega0 = 3.7  # GHZ frequency of the bath modes (normalized)
-Omega = 0.5  # GHz frequency of the driving field
-omega_drive = 3.6  # GHz frequency of the driving field (resonant)
+omega0 = 3.75  # GHZ frequency of the bath modes (normalized)
+Omega = 20*omega0  # GHz frequency of the driving field
+omega_drive = Omega/2.4048  # GHz frequency of the driving field (resonant)
 freq_list = np.linspace(omega_drive - 3, omega_drive + 3, 800) # driving freqs 
 
 k_max = 10 # max bessel index for markovian evolution
 
 # Bath properties:
-gamma = omega0/2 # GHz cut off frequency
+gamma = omega0 # GHz cut off frequency
 lam = 1.0  # coupling strength
 T = 0.5  # K temperature
 
@@ -162,7 +162,7 @@ def plot_bloch_sphere(results, tmax=tmax, filename="bloch_sphere.png"):
         zs = result['zs']
         t = result['t']
 
-        b = Bloch(fig, axs[0] if not result['markovian'] else axs[1])
+        b = Bloch(fig, axs[0] if result['markovian'] else axs[1])
         b.view = [-45, 30]
         cmap = plt.get_cmap('inferno')  # choose a colormap
         colors = cmap(np.divide(t, tmax))  # normalize time to [0, 1] for color mapping
@@ -176,8 +176,8 @@ def plot_bloch_sphere(results, tmax=tmax, filename="bloch_sphere.png"):
         b.point_color = colors
         b.render()
 
-    axs[0].set_title("Non-Markovian Evolution", fontsize=14)
-    axs[1].set_title("Markovian Evolution", fontsize=14)
+    axs[0].set_title("Markovian Evolution", fontsize=14)
+    axs[1].set_title("Non-Markovian Evolution", fontsize=14)
 
     plt.savefig(filename)
 
@@ -237,7 +237,7 @@ def plot_freq_sweep_map(filename="freq_sweep.png",  freq_list=freq_list, psi0=ps
 
 def main():
     results = tqdm(simulate_tls_dynamics(), desc="Simulating TLS Dynamics")
-    plot_bloch_sphere(results, filename="bloch_sphere_nonmarkovian.png")
+    plot_bloch_sphere(results, filename="bloch_sphere_resonant_drive_limit_cycle.png")
     # plot_freq_sweep_map(time_drive=10/omega0)
 
 if __name__ == "__main__":
