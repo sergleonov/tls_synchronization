@@ -2,20 +2,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from qutip import *
 from tqdm import tqdm
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from scipy.signal import windows
 from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
-
+import os
 # ---------------------- System Parameters ----------------------
 omega_tls_1 = 3.75
-omega_tls_2 = 3.77
+omega_tls_2 = 3.82
 J = 0.01
 
-Omega_list = [0.4]
+Omega_amp = 0.5
 
 T_total = 100
 T_drive = 10.0   # square pulse duration
 dt = 0.5
-omega_d_vals = np.linspace(3.0, 5.0, 100)
+omega_d_vals = np.linspace(3.0, 5.0, 800)
 
 # ---------------------- Disorder ----------------------
 np.random.seed(17)
@@ -55,13 +57,13 @@ n_time = len(tlist)
 print(f"Total time points: {n_time}")
 
 # ---------------------- HEOM Bath ----------------------
-Q_bath = sx1 + sx2
+Q_bath = sx1 + sx2 # coupling operator
 
-lam = 0.05
-gamma_bath = 0.05
-T = 0.5
+lam = 0.05   # coupling strength
+gamma_bath = omega_tls_1  # bath cutoff frequency
+T = 0.5   # temperature
 
-Nk = 3
+Nk = 2
 max_depth = 5
 
 bath = DrudeLorentzBath(Q_bath, lam, gamma_bath, T, Nk=Nk)
@@ -87,50 +89,59 @@ def smooth_envelope(amplitude, fraction=0.02):
     return np.convolve(amplitude, kernel, mode='same')
 
 # ---------------------- Simulation ----------------------
+def compute_heom(omega_d):
+
+    H_full = QobjEvo(
+        [H_static, [sx1 + sx2, drive_coeff]],
+        args={
+            'omega_d': omega_d,
+            'Omega': Omega_amp,
+            'T_drive': T_drive
+        }
+    )
+
+    # initial state
+    evals, evecs = H_static.eigenstates()
+    rho0 = ket2dm(evecs[0])
+
+    solver = HEOMSolver(
+        H_full,
+        [bath],
+        max_depth=max_depth,
+        options={"nsteps": 8000, "progress_bar": ''},
+    )
+
+    result = solver.run(
+        rho0,
+        tlist,
+        e_ops=[collective_excitation, collective_sp]
+    )
+
+    return np.real(result.expect[0]), result.expect[1]
+
+
 results_all = []
 
-for Omega_amp in Omega_list:
-    print(f"\nRunning Ω = {Omega_amp} GHz ...")
+print(f"\nRunning Ω = {Omega_amp} GHz ...")
 
-    exc_data = np.zeros((len(omega_d_vals), n_time))
-    sp_data = np.zeros((len(omega_d_vals), n_time), dtype=complex)
+exc_data = np.zeros((len(omega_d_vals), n_time))
+sp_data = np.zeros((len(omega_d_vals), n_time), dtype=complex)
 
-    for idx, omega_d in enumerate(tqdm(omega_d_vals)):
+with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
 
-        H_full = QobjEvo(
-            [H_static, [sx1 + sx2, drive_coeff]],
-            args={
-                'omega_d': omega_d,
-                'Omega': Omega_amp,
-                'T_drive': T_drive
-            }
-        )
+    for idx, (exc, sp) in enumerate(tqdm(executor.map(compute_heom, omega_d_vals),
+                                         total=len(omega_d_vals),
+                                         desc="HEOM simulations")):
+        exc_data[idx, :] = exc
+        sp_data[idx, :] = sp
 
-        # initial state
-        evals, evecs = H_static.eigenstates()
-        rho0 = ket2dm(evecs[0])
-
-        solver = HEOMSolver(
-            H_full,
-            [bath],
-            max_depth=max_depth,
-            options={"nsteps": 4000, "rtol": 1e-6, "atol": 1e-7, "progress_bar": ''},
-        )
-
-        result = solver.run(
-            rho0,
-            tlist,
-            e_ops=[collective_excitation, collective_sp]
-        )
-
-        exc_data[idx, :] = np.real(result.expect[0])
-        sp_data[idx, :] = result.expect[1]
-
-    results_all.append((exc_data, sp_data))
+results_all.append((exc_data, sp_data))
 
 print("\nHEOM simulation complete.\n")
 
 # ---------------------- Plot ⟨S+S-⟩ ----------------------
+os.makedirs("bctds",exist_ok=True)
+
 fig, ax = plt.subplots(figsize=(7,5))
 im = ax.imshow(results_all[0][0],
                extent=[tlist[0], tlist[-1], omega_d_vals[0], omega_d_vals[-1]],
@@ -140,7 +151,7 @@ ax.set_xlabel("Time (ns)")
 ax.set_ylabel("Drive Frequency (GHz)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
-plt.show()
+plt.savefig("bctds/heom_exc_map.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(figsize=(7,5))
@@ -152,7 +163,7 @@ ax.set_xlabel("Time (ns)")
 ax.set_ylabel("Drive Frequency (GHz)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
-plt.show()
+plt.savefig("bctds/heom_sp_map.png")
 
 # ---------------------- FFT ----------------------
 fft_data = []
@@ -189,6 +200,6 @@ ax.set_xlabel("Drive Frequency (GHz)")
 ax.set_ylabel("FFT Frequency (GHz)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
-plt.show()
+plt.savefig("bctds/heom_fft_map.png")
 
-print("All done — HEOM square pulse version complete.")
+print("Done.")
