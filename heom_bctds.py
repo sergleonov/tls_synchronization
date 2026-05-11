@@ -9,16 +9,16 @@ from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import os
 # ---------------------- System Parameters ----------------------
 omega_tls_1 = 3.75
-omega_tls_2 = 3.92
-J = 0.01
+omega_tls_2 = 3.82
+J = 0.02 # interaction strength
 
-Omega_amp = 0.5
+Omega_amp = 0.2
 
-T_total = 100 # ns
-T_drive = 10.0   # ns
-n_time = 4000
-tlist = np.linspace(0, T_total, n_time)
-dt = tlist[1] - tlist[0]
+T_total = 150 # ns
+T_drive = 100.0   # ns
+dt = 0.5 # ns
+tlist = np.arange(0, T_total, dt)
+n_time = len(tlist)
 omega_d_vals = np.linspace(3.0, 5.0, 200)
 
 
@@ -57,14 +57,14 @@ H_static = H0 + Hint
 # ---------------------- HEOM Bath ----------------------
 Q_bath = sx1 + sx2 # coupling operator
 
-lam = 0.02   # coupling strength
-gamma_bath = omega_tls_1  # bath cutoff frequency
+lam = 0.001   # coupling strength
+gamma_bath = max(omega_tls_1_dis, omega_tls_2_dis) # bath cutoff frequency
 T = 0.5   # temperature
 
-Nk = 2
+Nk = 3
 max_depth = 5
 
-bath = DrudeLorentzBath(Q_bath, lam, gamma_bath, T, Nk=Nk)
+bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
 
 # ---------------------- Square pulse ----------------------
 def drive_coeff(t, args):
@@ -93,7 +93,7 @@ def compute_heom(omega_d):
         H_full,
         [bath],
         max_depth=max_depth,
-        options={"nsteps": n_time, "progress_bar": ''},
+        options={"nsteps": 5000, "progress_bar": ''},
     )
 
     result = solver.run(
@@ -185,8 +185,8 @@ for idx, omega_d in enumerate(omega_d_vals):
 fft_data = np.array(fft_data)
 fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
 
-# limit the plot to 100 MHz
-fmax = 0.1 # GHz
+# limit the plot to observe the features
+fmax = 1 # GHz
 idx_max = np.searchsorted(fft_freqs, fmax) 
 
 fft_data = fft_data[:, :idx_max]
@@ -197,7 +197,7 @@ fig, ax = plt.subplots(figsize=(7,5))
 im = ax.imshow(fft_data.T,
                extent=[omega_d_vals[0], omega_d_vals[-1],
                        fft_freqs[0], fft_freqs[-1]],
-               origin='lower', aspect='auto', cmap='inferno')
+               origin='lower', aspect='auto', cmap='Oranges')
 ax.set_title("FFT of phase*env (HEOM, square pulse)")
 ax.set_xlabel("Drive Frequency (GHz)")
 ax.set_ylabel("FFT Frequency (GHz)")
