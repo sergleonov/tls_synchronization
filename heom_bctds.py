@@ -14,10 +14,13 @@ J = 0.01
 
 Omega_amp = 0.5
 
-T_total = 100
-T_drive = 10.0   # square pulse duration
-dt = 0.05
-omega_d_vals = np.linspace(3.0, 5.0, 300)
+T_total = 100 # ns
+T_drive = 10.0   # ns
+n_time = 4000
+tlist = np.linspace(0, T_total, n_time)
+dt = tlist[1] - tlist[0]
+omega_d_vals = np.linspace(3.0, 5.0, 200)
+
 
 # ---------------------- Disorder ----------------------
 np.random.seed(17)
@@ -51,11 +54,6 @@ H0 = 0.5 * omega_tls_1_dis * sz1 + 0.5 * omega_tls_2_dis * sz2
 Hint = J_dis * sx1 * sx2
 H_static = H0 + Hint
 
-# ---------------------- Time ----------------------
-tlist = np.arange(0.0, T_total + dt, dt)
-n_time = len(tlist)
-print(f"Total time points: {n_time}")
-
 # ---------------------- HEOM Bath ----------------------
 Q_bath = sx1 + sx2 # coupling operator
 
@@ -74,19 +72,6 @@ def drive_coeff(t, args):
         return args['Omega'] * np.cos(args['omega_d'] * t)
     else:
         return 0.0
-
-# ---------------------- FFT prep ----------------------
-window_fn = windows.hann(n_time)
-window_rms = np.sqrt(np.mean(window_fn**2))
-N_pad = 2**12
-
-def smooth_envelope(amplitude, fraction=0.02):
-    N = len(amplitude)
-    win_len = int(max(3, min(N-1, np.round(N * fraction))))
-    if win_len % 2 == 0:
-        win_len += 1
-    kernel = np.ones(win_len) / win_len
-    return np.convolve(amplitude, kernel, mode='same')
 
 # ---------------------- Simulation ----------------------
 def compute_heom(omega_d):
@@ -118,9 +103,6 @@ def compute_heom(omega_d):
     )
 
     return np.real(result.expect[0]), result.expect[1]
-
-
-results_all = []
 
 print(f"\nRunning Ω = {Omega_amp} GHz ...")
 
@@ -165,6 +147,19 @@ plt.colorbar(im, ax=ax)
 plt.tight_layout()
 plt.savefig("bctds/heom_sp_map.png")
 
+# ---------------------- FFT prep ----------------------
+window_fn = windows.hann(n_time)
+window_rms = np.sqrt(np.mean(window_fn**2))
+N_pad = 2**13
+
+def smooth_envelope(amplitude, fraction=0.02):
+    N = len(amplitude)
+    win_len = int(max(3, min(N-1, np.round(N * fraction))))
+    if win_len % 2 == 0:
+        win_len += 1
+    kernel = np.ones(win_len) / win_len
+    return np.convolve(amplitude, kernel, mode='same')
+
 # ---------------------- FFT ----------------------
 fft_data = []
 sp_data = results_all[1]
@@ -190,6 +185,14 @@ for idx, omega_d in enumerate(omega_d_vals):
 fft_data = np.array(fft_data)
 fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
 
+# limit the plot to 100 MHz
+fmax = 0.1 # GHz
+idx_max = np.searchsorted(fft_freqs, fmax) 
+
+fft_data = fft_data[:, :idx_max]
+fft_freqs = fft_freqs[:idx_max]
+
+# plot cropped data
 fig, ax = plt.subplots(figsize=(7,5))
 im = ax.imshow(fft_data.T,
                extent=[omega_d_vals[0], omega_d_vals[-1],
