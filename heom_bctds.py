@@ -9,15 +9,15 @@ from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import os
 # ---------------------- System Parameters ----------------------
 omega_tls_1 = 3.75
-omega_tls_2 = 3.82
+omega_tls_2 = 3.92
 J = 0.01
 
 Omega_amp = 0.5
 
 T_total = 100
 T_drive = 10.0   # square pulse duration
-dt = 0.5
-omega_d_vals = np.linspace(3.0, 5.0, 800)
+dt = 0.05
+omega_d_vals = np.linspace(3.0, 5.0, 300)
 
 # ---------------------- Disorder ----------------------
 np.random.seed(17)
@@ -59,7 +59,7 @@ print(f"Total time points: {n_time}")
 # ---------------------- HEOM Bath ----------------------
 Q_bath = sx1 + sx2 # coupling operator
 
-lam = 0.05   # coupling strength
+lam = 0.02   # coupling strength
 gamma_bath = omega_tls_1  # bath cutoff frequency
 T = 0.5   # temperature
 
@@ -108,7 +108,7 @@ def compute_heom(omega_d):
         H_full,
         [bath],
         max_depth=max_depth,
-        options={"nsteps": 8000, "progress_bar": ''},
+        options={"nsteps": n_time, "progress_bar": ''},
     )
 
     result = solver.run(
@@ -135,7 +135,7 @@ with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as e
         exc_data[idx, :] = exc
         sp_data[idx, :] = sp
 
-results_all.append((exc_data, sp_data))
+results_all = (exc_data, sp_data)
 
 print("\nHEOM simulation complete.\n")
 
@@ -143,31 +143,31 @@ print("\nHEOM simulation complete.\n")
 os.makedirs("bctds",exist_ok=True)
 
 fig, ax = plt.subplots(figsize=(7,5))
-im = ax.imshow(results_all[0][0],
-               extent=[tlist[0], tlist[-1], omega_d_vals[0], omega_d_vals[-1]],
+im = ax.imshow(np.transpose(results_all[0]),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax.set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
-ax.set_xlabel("Time (ns)")
-ax.set_ylabel("Drive Frequency (GHz)")
+ax.set_xlabel("Drive Frequency (GHz)")
+ax.set_ylabel("Time (ns)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
 plt.savefig("bctds/heom_exc_map.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(figsize=(7,5))
-im = ax.imshow(np.abs(results_all[0][1]),
-               extent=[tlist[0], tlist[-1], omega_d_vals[0], omega_d_vals[-1]],
+im = ax.imshow(np.transpose(np.abs(results_all[1])),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax.set_title("|⟨S₊⟩| (HEOM, square pulse)")
-ax.set_xlabel("Time (ns)")
-ax.set_ylabel("Drive Frequency (GHz)")
+ax.set_xlabel("Drive Frequency (GHz)")
+ax.set_ylabel("Time (ns)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
 plt.savefig("bctds/heom_sp_map.png")
 
 # ---------------------- FFT ----------------------
 fft_data = []
-sp_data = results_all[0][1]
+sp_data = results_all[1]
 
 for idx, omega_d in enumerate(omega_d_vals):
     Splus_t = sp_data[idx, :]
@@ -201,5 +201,5 @@ ax.set_ylabel("FFT Frequency (GHz)")
 plt.colorbar(im, ax=ax)
 plt.tight_layout()
 plt.savefig("bctds/heom_fft_map.png")
-
+plt.show()
 print("Done.")
