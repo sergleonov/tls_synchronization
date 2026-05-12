@@ -7,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from scipy.signal import windows
 from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import os
+import argparse
 # ---------------------- System Parameters ----------------------
 omega_tls_1 = 3.75
 omega_tls_2 = 3.82
@@ -20,6 +21,10 @@ dt = 0.5 # ns
 tlist = np.arange(0, T_total, dt)
 n_time = len(tlist)
 omega_d_vals = np.linspace(3.0, 5.0, 500)
+
+ap = argparse.ArgumentParser(description="HEOM vs Markovian comparison for two coupled TLS under square pulse drive")
+ap.add_argument("--tag", type=str, default="", help="Tag for output files")
+args = ap.parse_args()
 
 
 # ---------------------- Disorder ----------------------
@@ -61,7 +66,7 @@ lam = 0.001   # coupling strength
 gamma_bath = max(omega_tls_1_dis, omega_tls_2_dis) # bath cutoff frequency
 T = 0.5   # temperature
 
-Nk = 2
+Nk = 3
 max_depth = 5
 
 bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
@@ -116,7 +121,13 @@ def compute_mark(omega_d):
         }
     )
 
-    c_ops = [np.sqrt(lam) * collective_sm]
+    # collaps ops with temperature dependence
+    n_th1 = 1 / (np.exp(omega_tls_1_dis / T) - 1)
+    n_th2 = 1 / (np.exp(omega_tls_2_dis / T) - 1)
+    c_ops = [np.sqrt(lam * (n_th1 + 1)) * sm1]
+    c_ops.append(np.sqrt(lam * n_th1) * sp1)
+    c_ops.append(np.sqrt(lam * (n_th2 + 1)) * sm2)
+    c_ops.append(np.sqrt(lam * n_th2) * sp2)
 
     # initial state
     evals, evecs = H_static.eigenstates()
@@ -179,7 +190,7 @@ ax[1].set_ylabel("Time (ns)")
 cb1 = fig.colorbar(im1, cax=ax[2])
 cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_exc_map_{gamma_bath}.png")
+plt.savefig(f"bctds/heom_exc_map_{gamma_bath}_{args.tag}.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
@@ -198,7 +209,26 @@ ax[1].set_ylabel("Time (ns)")
 cb2 = fig.colorbar(im1, cax=ax[2])
 cb2.set_label(r"$|\langle \sigma^{+} \rangle|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_sp_map_{gamma_bath}.png")
+plt.savefig(f"bctds/heom_sp_map_{gamma_bath}_{args.tag}.png")
+
+# ---------------------- Difference plot ----------------------
+fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+im0 = ax[0].imshow(np.transpose(results_mark[0] - results_heom[0]),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+               origin='lower', aspect='auto', cmap='bwr')
+ax[0].set_title("Difference in ⟨S₊S₋⟩ (Markovian - HEOM)")
+ax[0].set_xlabel("Drive Frequency (GHz)")
+ax[0].set_ylabel("Time (ns)")
+im1 = ax[1].imshow(np.transpose(np.abs(results_mark[1]) - np.abs(results_heom[1])),
+               extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+               origin='lower', aspect='auto', cmap='bwr')
+ax[1].set_title("Difference in |⟨S₊⟩| (Markovian - HEOM)")
+ax[1].set_xlabel("Drive Frequency (GHz)")
+ax[1].set_ylabel("Time (ns)")
+cb3 = fig.colorbar(im1, cax=ax[2])
+cb3.set_label(r"Difference (arb.)", labelpad=14)
+plt.tight_layout()
+plt.savefig(f"bctds/heom_diff_map_{gamma_bath}_{args.tag}.png")
 
 # ---------------------- FFT ----------------------
 def smooth_envelope(amplitude, fraction=0.02):
@@ -273,6 +303,6 @@ ax[1].set_ylabel("FFT Frequency (GHz)")
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_fft_map_{gamma_bath}.png")
+plt.savefig(f"bctds/heom_fft_map_{gamma_bath}_{args.tag}.png")
 plt.show()
 print("Done.")
