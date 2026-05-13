@@ -32,7 +32,7 @@ DISORDER = False # set to True to include disorder in the system parameters
 
 N_TLS = 2
 np.random.seed(17)
-omega_tls = [np.random.normal(4.0, 0.1) for _ in range(N_TLS)]
+omega_tls = np.random.uniform(3.0, 5.0, N_TLS) # GHz
 print(f"TLS frequencies: {omega_tls}")
 
 # time list and drive frequencies
