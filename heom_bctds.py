@@ -11,13 +11,28 @@ import argparse
 # ---------------------- System Parameters ----------------------
 omega_tls_1 = 3.75
 omega_tls_2 = 3.82
-J = 0.02 # interaction strength
+J = 0.01 # interaction strength
 
+# drive strength
 Omega_amp = 0.2
 
-T_total = 1600 # ns
+# bath parameters
+lam = 0.02   # coupling strength
+gamma_bath = 0.5
+T = 0.1   # temperature
+
+# solver parameters
+Nk = 4
+max_depth = 5
+
+# time parameters
+T_total = 800 # ns
 T_drive = 100.0   # ns
 dt = 0.5 # ns
+
+DISORDER = False # set to True to include disorder in the system parameters
+
+# time list and drive frequencies
 tlist = np.arange(0, T_total, dt)
 n_time = len(tlist)
 omega_d_vals = np.linspace(3.0, 5.0, 500)
@@ -30,14 +45,15 @@ args = ap.parse_args()
 # ---------------------- Disorder ----------------------
 np.random.seed(17)
 sigma_disorder = 0.1
-delta1 = np.random.normal(0.0, sigma_disorder)
-delta2 = np.random.normal(0.0, sigma_disorder)
-J_dis = J + np.random.normal(0.0, 0.1)
 
-omega_tls_1_dis = omega_tls_1 + delta1
-omega_tls_2_dis = omega_tls_2 + delta2
-
-print(f"Disorder: Δ1={delta1:+.3f}, Δ2={delta2:+.3f}, ΔJ={J_dis-J:+.3f}")
+if DISORDER:
+    delta1 = np.random.normal(0.0, sigma_disorder)
+    delta2 = np.random.normal(0.0, sigma_disorder)
+    delta_J = np.random.normal(0.0, 0.1)
+    omega_tls_1 += delta1
+    omega_tls_2 += delta2
+    J  += delta_J
+    print(f"Disorder: Δ1={delta1:+.3f}, Δ2={delta2:+.3f}, ΔJ={delta_J:+.3f}")
 
 # ---------------------- Operators ----------------------
 sx1 = tensor(sigmax(), qeye(2))
@@ -55,19 +71,12 @@ collective_sm = sm1 + sm2
 collective_excitation = collective_sp * collective_sm
 
 # ---------------------- Hamiltonian ----------------------
-H0 = 0.5 * omega_tls_1_dis * sz1 + 0.5 * omega_tls_2_dis * sz2
-Hint = J_dis * sx1 * sx2
+H0 = 0.5 * omega_tls_1 * sz1 + 0.5 * omega_tls_2 * sz2
+Hint = J * sx1 * sx2
 H_static = H0 + Hint
 
 # ---------------------- HEOM Bath ----------------------
 Q_bath = sx1 + sx2 # coupling operator
-
-lam = 0.001   # coupling strength
-gamma_bath = max(omega_tls_1_dis, omega_tls_2_dis) # bath cutoff frequency
-T = 0.5   # temperature
-
-Nk = 3
-max_depth = 5
 
 bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
 
@@ -122,8 +131,8 @@ def compute_mark(omega_d):
     )
 
     # collaps ops with temperature dependence
-    n_th1 = 1 / (np.exp(omega_tls_1_dis / T) - 1)
-    n_th2 = 1 / (np.exp(omega_tls_2_dis / T) - 1)
+    n_th1 = 1 / (np.exp(omega_tls_1 / T) - 1)
+    n_th2 = 1 / (np.exp(omega_tls_2 / T) - 1)
     c_ops = [np.sqrt(lam * (n_th1 + 1)) * sm1]
     c_ops.append(np.sqrt(lam * n_th1) * sp1)
     c_ops.append(np.sqrt(lam * (n_th2 + 1)) * sm2)
@@ -190,7 +199,7 @@ ax[1].set_ylabel("Time (ns)")
 cb1 = fig.colorbar(im1, cax=ax[2])
 cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_exc_map_{gamma_bath}_{args.tag}.png")
+plt.savefig(f"bctds/heom_exc_map_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
@@ -209,7 +218,7 @@ ax[1].set_ylabel("Time (ns)")
 cb2 = fig.colorbar(im1, cax=ax[2])
 cb2.set_label(r"$|\langle \sigma^{+} \rangle|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_sp_map_{gamma_bath}_{args.tag}.png")
+plt.savefig(f"bctds/heom_sp_map_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- Difference plot ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
@@ -228,7 +237,7 @@ ax[1].set_ylabel("Time (ns)")
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"Difference (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_diff_map_{gamma_bath}_{args.tag}.png")
+plt.savefig(f"bctds/heom_diff_map_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- FFT ----------------------
 def smooth_envelope(amplitude, fraction=0.02):
@@ -303,6 +312,6 @@ ax[1].set_ylabel("FFT Frequency (GHz)")
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_fft_map_{gamma_bath}_{args.tag}.png")
+plt.savefig(f"bctds/heom_fft_map_cut_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 plt.show()
 print("Done.")
