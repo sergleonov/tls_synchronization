@@ -11,13 +11,12 @@ import argparse
 # ---------------------- System Parameters ----------------------
 J = 0.01 # interaction strength
 
-# drive strength
-Omega_amp = 0.2
+Omega_amp = 0.2 # drive strength
 
 # bath parameters
-lam = 0.05   # coupling strength
+lam = 0.02 # coupling strength
 gamma_bath = 0.05
-T = 0.5   # temperature
+T = 0.5 # temperature
 
 # solver parameters
 Nk = 4
