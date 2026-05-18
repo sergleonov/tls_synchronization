@@ -16,19 +16,19 @@ Omega_amp = 0.2
 
 # bath parameters
 lam = 0.05   # coupling strength
-gamma_bath = 0.005
-T = 0.1   # temperature
+gamma_bath = 0.05
+T = 0.5   # temperature
 
 # solver parameters
 Nk = 4
-max_depth = 5
+max_depth = 6
 
 # time parameters
-T_total = 800 # ns
-T_drive = 100.0   # ns
+T_total = 1000 # ns
+T_drive = 60.0   # ns
 dt = 0.5 # ns
 
-DISORDER = False # set to True to include disorder in the system parameters
+DISORDER = True # set to True to include disorder in the system parameters
 
 N_TLS = 2
 np.random.seed(17)
@@ -49,9 +49,9 @@ args = ap.parse_args()
 sigma_disorder = 0.1
 
 if DISORDER:
-    J += np.random.normal(0.0, 0.1)
     for i in range(N_TLS):
         omega_tls[i] += np.random.normal(0.0, sigma_disorder)
+    J += np.random.normal(0.0, sigma_disorder)
     print(f"Disordered parameters: J={J}, omega_tls={omega_tls}")
 
 
