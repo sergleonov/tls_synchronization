@@ -28,8 +28,11 @@ T_drive = 60.0   # ns
 dt = 0.5 # ns
 
 DISORDER = True # set to True to include disorder in the system parameters
+SAVE_FIG = True # set to True to save figures
 
-N_TLS = 2
+N_TLS = 2 # number of TLS in the system
+
+# generate TLS frequencies
 np.random.seed(17)
 omega_tls = np.random.uniform(3.0, 5.0, N_TLS) # GHz
 print(f"TLS frequencies: {omega_tls}")
@@ -42,7 +45,6 @@ omega_d_vals = np.linspace(3.0, 5.0, 500)
 ap = argparse.ArgumentParser(description="HEOM vs Markovian comparison for two coupled TLS under square pulse drive")
 ap.add_argument("--tag", type=str, default="", help="Tag for output files")
 args = ap.parse_args()
-
 
 # ---------------------- Disorder ----------------------
 sigma_disorder = 0.1
@@ -167,26 +169,29 @@ def compute_mark(omega_d):
 
 print(f"\nRunning Ω = {Omega_amp} GHz ...")
 
-exc_data = np.zeros((len(omega_d_vals), n_time))
-sp_data = np.zeros((len(omega_d_vals), n_time), dtype=complex)
+exc_mark = np.zeros((len(omega_d_vals), n_time))
+sp_mark = np.zeros((len(omega_d_vals), n_time), dtype=complex)
+
+exc_heom = np.zeros((len(omega_d_vals), n_time))
+sp_heom = np.zeros((len(omega_d_vals), n_time), dtype=complex)
 
 with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
 
     for idx, (exc, sp) in enumerate(tqdm(executor.map(compute_heom, omega_d_vals),
                                          total=len(omega_d_vals),
                                          desc="HEOM simulations")):
-        exc_data[idx, :] = exc
-        sp_data[idx, :] = sp
+        exc_heom[idx, :] = exc
+        sp_heom[idx, :] = sp
     
-    results_heom = (exc_data, sp_data)
+    results_heom = (exc_heom, sp_heom)
      
     for idx, (exc, sp) in enumerate(tqdm(executor.map(compute_mark, omega_d_vals),
                                          total=len(omega_d_vals),
                                          desc="Markovian simulations")):
-        exc_data[idx, :] = exc
-        sp_data[idx, :] = sp
+        exc_mark[idx, :] = exc
+        sp_mark[idx, :] = sp
     
-    results_mark = (exc_data, sp_data)
+    results_mark = (exc_mark, sp_mark)
 
 
 print("\nSimulation complete.\n")
@@ -194,62 +199,88 @@ print("\nSimulation complete.\n")
 # ---------------------- Plot ⟨S+S-⟩ ----------------------
 os.makedirs("bctds",exist_ok=True)
 gridspec = {'width_ratios': [1, 1, 0.1]}
-
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+
+# plot markov
 im0 = ax[0].imshow(np.transpose(results_mark[0]),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax[0].set_title("⟨S₊S₋⟩ (Markovian, square pulse)")
 ax[0].set_xlabel("Drive Frequency (GHz)")
 ax[0].set_ylabel("Time (ns)")
+
+# plot heom
 im1 = ax[1].imshow(np.transpose(results_heom[0]),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax[1].set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
 ax[1].set_xlabel("Drive Frequency (GHz)")
 ax[1].set_ylabel("Time (ns)")
+
+# colorbar
 cb1 = fig.colorbar(im1, cax=ax[2])
 cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_exc_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
+
+# save
+if SAVE_FIG:
+    plt.savefig(f"bctds/heom_exc_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- Plot |⟨S+⟩| ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+
+# plot markov
 im0 = ax[0].imshow(np.transpose(np.abs(results_mark[1])),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax[0].set_title("|⟨S₊⟩| (Markovian, square pulse)")
 ax[0].set_xlabel("Drive Frequency (GHz)")
 ax[0].set_ylabel("Time (ns)")
+
+# plot heom
 im1 = ax[1].imshow(np.transpose(np.abs(results_heom[1])),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='inferno')
 ax[1].set_title("|⟨S₊⟩| (HEOM, square pulse)")
 ax[1].set_xlabel("Drive Frequency (GHz)")
 ax[1].set_ylabel("Time (ns)")
+
+# colorbar
 cb2 = fig.colorbar(im1, cax=ax[2])
 cb2.set_label(r"$|\langle \sigma^{+} \rangle|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_sp_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
+
+# save
+if SAVE_FIG:
+    plt.savefig(f"bctds/heom_sp_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- Difference plot ----------------------
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+
+# plot difference in total excitation
 im0 = ax[0].imshow(np.transpose(results_mark[0] - results_heom[0]),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='bwr')
 ax[0].set_title("Difference in ⟨S₊S₋⟩ (Markovian - HEOM)")
 ax[0].set_xlabel("Drive Frequency (GHz)")
 ax[0].set_ylabel("Time (ns)")
+
+# plot difference in sigma plus
 im1 = ax[1].imshow(np.transpose(np.abs(results_mark[1]) - np.abs(results_heom[1])),
                extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                origin='lower', aspect='auto', cmap='bwr')
 ax[1].set_title("Difference in |⟨S₊⟩| (Markovian - HEOM)")
 ax[1].set_xlabel("Drive Frequency (GHz)")
 ax[1].set_ylabel("Time (ns)")
+
+# colorbar
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"Difference (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_diff_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
+
+# save
+if SAVE_FIG:
+    plt.savefig(f"bctds/heom_diff_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 
 # ---------------------- FFT ----------------------
 def smooth_envelope(amplitude, fraction=0.02):
@@ -306,6 +337,8 @@ fft_freqs_mark, fft_data_mark = compute_fft(omega_d_vals, sp_mark)
 fft_freqs_heom, fft_data_heom = compute_fft(omega_d_vals, sp_heom)
 
 fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+
+# plot markov
 im0 = ax[0].imshow(fft_data_mark.T,
                     extent=[omega_d_vals[0], omega_d_vals[-1],
                             fft_freqs_mark[0], fft_freqs_mark[-1]],
@@ -314,6 +347,7 @@ ax[0].set_title("FFT of phase*env (Markovian, square pulse)")
 ax[0].set_xlabel("Drive Frequency (GHz)")
 ax[0].set_ylabel("FFT Frequency (GHz)")
 
+# plot heom
 im1 = ax[1].imshow(fft_data_heom.T,
                     extent=[omega_d_vals[0], omega_d_vals[-1],
                             fft_freqs_heom[0], fft_freqs_heom[-1]],
@@ -321,9 +355,14 @@ im1 = ax[1].imshow(fft_data_heom.T,
 ax[1].set_title("FFT of phase*env (HEOM, square pulse)")
 ax[1].set_xlabel("Drive Frequency (GHz)")
 ax[1].set_ylabel("FFT Frequency (GHz)")
+
+# colorbar
 cb3 = fig.colorbar(im1, cax=ax[2])
 cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
 plt.tight_layout()
-plt.savefig(f"bctds/heom_fft_map_cut_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
+
+# save and show
+if SAVE_FIG:
+    plt.savefig(f"bctds/heom_fft_map_cut_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}_{args.tag}.png")
 plt.show()
 print("Done.")
