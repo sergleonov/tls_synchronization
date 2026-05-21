@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from qutip import *
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
-from scipy.signal import windows
 from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import os
 import matplotlib.animation as animation
