@@ -1,76 +1,160 @@
-'''
-Animation of Husimi function evolution from https://arxiv.org/pdf/2511.04339
-written by Salil Bedkihal
-'''
 import numpy as np
 import matplotlib.pyplot as plt
 from qutip import *
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
+from scipy.signal import windows
+from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
+import os
+import argparse
 
-# ---------------------- Parameters ----------------------
-omega_tls_1 = 3.0
-omega_tls_2 = 4.0
-J = 0.01
+# ffmpeg -framerate 10 -i animation/husimi_frame_%03d.png -c:v libx264 -pix_fmt yuv420p husimi_animation.mp4
 
-Omega = 0.5
+# ---------------------- System Parameters ----------------------
+J = 0.01 # interaction strength
 
-T_drive = 50
-T_total = 100
-dt = 0.5
+Omega_amp = 0.2 # drive strength
 
+omega_d = 3.75 # drive frequency
+
+# bath parameters
+lam = 0.02 # coupling strength
+gamma_bath = 0.05
+T = 0.5 # temperature
+
+# solver parameters
+Nk = 3
+max_depth = 5
+
+# time parameters
+T_total = 1000 # ns
+T_drive = 60.0   # ns
+dt = 0.5 # ns
+
+DISORDER = True # set to True to include disorder in the system parameters
+SAVE_FIG = True # set to True to save figures
+
+N_TLS = 2 # number of TLS in the system
+
+# generate TLS frequencies
+np.random.seed(17)
+omega_tls = np.random.uniform(3.0, 5.0, N_TLS) # GHz
+print(f"TLS frequencies: {omega_tls}")
+
+# time list and drive frequencies
 tlist = np.arange(0, T_total, dt)
-omega_d = 3.0  # choose one frequency
+n_time = len(tlist)
 
 # ---------------------- Disorder ----------------------
-np.random.seed(18)
-omega_tls_1 += np.random.normal(0, 0.05)
-omega_tls_2 += np.random.normal(0, 0.05)
-J += np.random.normal(0, 0.01)
+sigma_disorder = 0.1
 
-print("Disorder applied.")
+if DISORDER:
+    for i in range(N_TLS):
+        omega_tls[i] += np.random.normal(0.0, sigma_disorder)
+    J += np.random.normal(0.0, sigma_disorder)
+    print(f"Disordered parameters: J={J}, omega_tls={omega_tls}")
+
 
 # ---------------------- Operators ----------------------
-sx1 = tensor(sigmax(), qeye(2))
-sx2 = tensor(qeye(2), sigmax())
-sz1 = tensor(sigmaz(), qeye(2))
-sz2 = tensor(qeye(2), sigmaz())
+sx = []
+sz = []
+sm = []
+sp = []
 
-sm1 = tensor(sigmam(), qeye(2))
-sm2 = tensor(qeye(2), sigmam())
+for i in range(N_TLS):
+    op_list = [qeye(2) for _ in range(N_TLS)]
+    op_list[i] = sigmax()
+    sx.append(tensor(op_list))
+    
+    op_list[i] = sigmaz()
+    sz.append(tensor(op_list))
+    
+    op_list[i] = sigmam()
+    sm.append(tensor(op_list))
+    
+    op_list[i] = sigmap()
+    sp.append(tensor(op_list))
 
-drive_op = sx1 + sx2
+collective_sp = sum(sp)
+collective_sm = sum(sm)
+collective_excitation = collective_sp * collective_sm
 
+# collapse operators
+n_th = []
+for i in range(N_TLS):
+    n_th.append(1 / (np.exp(omega_tls[i] / T) - 1))
+c_ops = []
+for i in range(N_TLS):
+    c_ops.append(np.sqrt(lam * (n_th[i] + 1)) * sm[i])
+    c_ops.append(np.sqrt(lam * n_th[i]) * sp[i])
+
+# ---------------------- Square pulse ----------------------
+def drive_coeff(t, args):
+    if 0.0 <= t <= args['T_drive']:
+        return args['Omega'] * np.cos(args['omega_d'] * t)
+    else:
+        return 0.0
+    
 # ---------------------- Hamiltonian ----------------------
-H0 = 0.5 * omega_tls_1 * sz1 + 0.5 * omega_tls_2 * sz2
-H_int = J * sz1 * sz2+J*sx1*sx2
-H_static = H0 + H_int
+H0 = sum(0.5 * omega_tls[i] * sz[i] for i in range(N_TLS))
+Hint = 0
+for i in range(N_TLS):
+    for j in range(i+1, N_TLS):
+        Hint += J * (sx[i] * sx[j])
+H_static = H0 + Hint
 
-# ---------------------- Dissipation ----------------------
-gamma = 0.002
-c_ops = [np.sqrt(gamma)*(sm1+sm2)]
+H_full = QobjEvo(
+    [H_static,
+    [sum(sx), drive_coeff]],
+    args={
+        'omega_d': omega_d,
+        'Omega': Omega_amp,
+        'T_drive': T_drive
+    }
+)
 
-# ---------------------- Pulse envelope ----------------------
-def pulse_env(t, args):
-    return 1.0 if t <= T_drive else 0.0
+# ---------------------- HEOM Bath ----------------------
+Q_bath = sum(sx)
 
-def drive(t, args):
-    return Omega * np.cos(omega_d * t) * pulse_env(t, args)
+bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
 
-H = [H_static, [drive_op, drive]]
-
-# ---------------------- Initial state ----------------------
-psi0 = H_static.groundstate()[1]
+# ---------------------- Square pulse ----------------------
+def drive_coeff(t, args):
+    if 0.0 <= t <= args['T_drive']:
+        return args['Omega'] * np.cos(args['omega_d'] * t)
+    else:
+        return 0.0
+    
+#-------------Initial state--------------
+evals, evecs = H_static.eigenstates()
+psi0 = evecs[0] # initial state
+rho0 = ket2dm(psi0) # initial density matrix
 
 # ---------------------- Solve ----------------------
-result = mesolve(
-    H,
+print("Solving dynamics...")
+
+solver = HEOMSolver(
+        H_full,
+        [bath],
+        max_depth=max_depth,
+        options={"nsteps": 5000, "progress_bar": '', "store_states": True},
+    )
+
+result_heom = solver.run(
+    rho0,
+    tlist,
+    e_ops=[collective_excitation, collective_sp]
+)
+
+result_mark = mesolve(
+    H_full,
     psi0,
     tlist,
     c_ops,
-    [],
-    options=Options(store_states=True)
+    e_ops=[collective_excitation, collective_sp],
+    options={"nsteps": 5000, "progress_bar": '', "store_states": True},
 )
-
+print("Done solving dynamics.")
 # ---------------------- Spin coherent ----------------------
 def spin_coherent(theta, phi):
     return (np.cos(theta/2) * basis(2,0) +
@@ -92,48 +176,70 @@ phi_grid = np.linspace(0, 2*np.pi, 100)
 # ---------------------- Compute Q(t) ----------------------
 print("Computing Husimi-Q(t)...")
 
-Q_time = np.zeros((len(tlist), len(theta_grid), len(phi_grid)))
+Qt_mark = np.zeros((len(tlist), len(theta_grid), len(phi_grid)))
+Qt_heom = np.zeros((len(tlist), len(theta_grid), len(phi_grid)))
 
-for t_idx, state in enumerate(tqdm(result.states)):
+for t_idx, state in enumerate(tqdm(result_mark.states)):
 
     rho = state
     if rho.isket:
         rho = ket2dm(rho)
 
     rho1 = ptrace(rho, 0)
-    Q_time[t_idx] = husimi_Q(rho1, theta_grid, phi_grid)
+    Qt_mark[t_idx] = husimi_Q(rho1, theta_grid, phi_grid)
 
+
+for t_idx, state in enumerate(tqdm(result_heom.states)):
+    
+    rho = state
+    if rho.isket:
+        rho = ket2dm(rho)
+
+    rho1 = ptrace(rho, 0)
+    Qt_heom[t_idx] = husimi_Q(rho1, theta_grid, phi_grid)
+
+print("Done computing Husimi-Q(t).")
 # ---------------------- Animation ----------------------
-print("Starting animation...")
-
-plt.figure(figsize=(7,6))
-
-frames = np.arange(0, len(tlist), 1)
-
-vmax = np.max(Q_time)
+print("Generating animation...")
+gridspec = {'width_ratios': [1, 1, 0.1]}
+fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
 
 pause_time = 0.1
 
-for t_idx in frames:
+for t_idx in range(n_time):
 
-    plt.clf()
+    # clear frame
+    ax[0].clear()
+    ax[1].clear()
+    ax[2].clear()
 
-    plt.imshow(
-        Q_time[t_idx],
+    # add labels
+    ax[0].set_title("Markovian")
+    ax[1].set_title("Non-Markovian")
+    ax[0].set_xlabel(r"$\phi$")
+    ax[1].set_xlabel(r"$\phi$")
+    ax[0].set_ylabel(r"$\theta$")
+    # add data
+    im0 = ax[0].imshow(
+        Qt_mark[t_idx],
         origin='lower',
         extent=[0, 2*np.pi, 0, np.pi],
-        cmap='viridis',
-        vmin=0,
-        vmax=vmax
+        cmap='inferno'
     )
 
-    plt.colorbar(label="Q(θ,φ)")
-    plt.xlabel("φ")
-    plt.ylabel("θ")
-
+    im1 = ax[1].imshow(
+        Qt_heom[t_idx],
+        origin='lower',
+        extent=[0, 2*np.pi, 0, np.pi],
+        cmap='inferno'
+    )
+    # colorbar
+    cb1 = fig.colorbar(im1, cax=ax[2])
+    cb1.set_label(r"$Q(\theta,\phi)$")
+    plt.tight_layout()
+    # label time of the frame
     t_now = tlist[t_idx]
 
-    # ON / OFF label
     if t_now <= T_drive:
         phase = "DRIVE ON"
         color = 'green'
@@ -141,10 +247,10 @@ for t_idx in frames:
         phase = "DRIVE OFF"
         color = 'red'
 
-    plt.title(f"t = {t_now:.1f} ns | {phase}", color=color)
+    fig.suptitle(f"Husimi Q(t) plot for Markovian and Non-Markovian time evolution\nt = {t_now:.1f} ns | {phase}", color=color)
 
+    # save if needed
+    if SAVE_FIG:
+        os.makedirs("animation",exist_ok=True)
+        plt.savefig(f"animation/husimi_frame_{t_idx:04d}.png")
     plt.pause(pause_time)
-
-plt.show()
-
-print("Done.")
