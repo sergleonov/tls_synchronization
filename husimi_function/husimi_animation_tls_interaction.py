@@ -11,8 +11,6 @@ import matplotlib.animation as animation
 import argparse
 import sys
 
-# ffmpeg -framerate 10 -i animation/husimi_frame_%03d.png -c:v libx264 -pix_fmt yuv420p husimi_animation.mp4
-
 # ---------------------- System Parameters ----------------------
 J = 0.01 # interaction strength
 
@@ -34,7 +32,7 @@ T_total = 1000 # ns
 T_drive = 60.0   # ns
 dt = 0.5 # ns
 
-DISORDER = True # set to True to include disorder in the system parameters
+DISORDER = False # set to True to include disorder in the system parameters
 SAVE_FIG = True # set to True to save figures
 
 N_TLS = 2 # number of TLS in the system
@@ -58,8 +56,58 @@ sigma_disorder = 0.1
 if DISORDER:
     for i in range(N_TLS):
         omega_tls[i] += np.random.normal(0.0, sigma_disorder)
-    J += np.random.normal(0.0, sigma_disorder)
+    J += np.random.normal(0.0, sigma_disorder*0.1) # smaller disorder for J 
     print(f"Disordered parameters: J={J}, omega_tls={omega_tls}")
+
+# ----------------------- Operators ----------------------
+sx = []
+sz = []
+sm = []
+sp = []
+
+for i in range(N_TLS):
+    op_list = [qeye(2) for _ in range(N_TLS)]
+    op_list[i] = sigmax()
+    sx.append(tensor(op_list))
+    
+    op_list[i] = sigmaz()
+    sz.append(tensor(op_list))
+    
+    op_list[i] = sigmam()
+    sm.append(tensor(op_list))
+    
+    op_list[i] = sigmap()
+    sp.append(tensor(op_list))
+
+collective_sp = sum(sp)
+collective_sm = sum(sm)
+collective_excitation = collective_sp * collective_sm
+
+# collapse operators
+n_th = []
+for i in range(N_TLS):
+    n_th.append(1 / (np.exp(omega_tls[i] / T) - 1))
+c_ops = []
+for i in range(N_TLS):
+    c_ops.append(np.sqrt(lam * (n_th[i] + 1)) * sm[i])
+    c_ops.append(np.sqrt(lam * n_th[i]) * sp[i])
+    
+# ---------------------- Hamiltonian ----------------------
+H0 = sum(0.5 * omega_tls[i] * sz[i] for i in range(N_TLS))
+Hint = 0
+for i in range(N_TLS):
+    for j in range(i+1, N_TLS):
+        Hint += J * (sx[i] * sx[j])
+H_static = H0 + Hint
+
+# ---------------------- HEOM Bath ----------------------
+Q_bath = sum(sx)
+bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
+
+# ---------------------- Initial state -------------------
+evals, evecs = H_static.eigenstates()
+psi0 = evecs[0] # initial state
+rho0 = ket2dm(psi0) # initial density matrix
 
 # ---------------------- Functions ----------------------
 def compute_husimi_Q(state):
@@ -171,56 +219,13 @@ def generate_animation(Qt_mark, Qt_heom, tlist):
         fig.suptitle(f"Husimi Q(t) plot for Markovian and Non-Markovian time evolution\nt = {t_now:.1f} ns | {phase}", color=color)
 
     ani = animation.FuncAnimation(fig=fig, func=update, frames=n_time, interval=30)
-    os.makedirs("animation",exist_ok=True)
-    ani.save(f"animation/husimi_animation_NTLS{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}.mp4", writer='ffmpeg', fps=10)
+    os.makedirs("husimi_animation",exist_ok=True)
+    ani.save(f"husimi_animation/husimi_animation_NTLS{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}.mp4", writer='ffmpeg', fps=10)
+    print("Animation saved.")
 
-def main():
-    # ---------------------- Operators ----------------------
-    sx = []
-    sz = []
-    sm = []
-    sp = []
+def run_full_sim():
 
-    for i in range(N_TLS):
-        op_list = [qeye(2) for _ in range(N_TLS)]
-        op_list[i] = sigmax()
-        sx.append(tensor(op_list))
-        
-        op_list[i] = sigmaz()
-        sz.append(tensor(op_list))
-        
-        op_list[i] = sigmam()
-        sm.append(tensor(op_list))
-        
-        op_list[i] = sigmap()
-        sp.append(tensor(op_list))
-
-    collective_sp = sum(sp)
-    collective_sm = sum(sm)
-    collective_excitation = collective_sp * collective_sm
-
-    # collapse operators
-    n_th = []
-    for i in range(N_TLS):
-        n_th.append(1 / (np.exp(omega_tls[i] / T) - 1))
-    c_ops = []
-    for i in range(N_TLS):
-        c_ops.append(np.sqrt(lam * (n_th[i] + 1)) * sm[i])
-        c_ops.append(np.sqrt(lam * n_th[i]) * sp[i])
-        
-    # ---------------------- Hamiltonian ----------------------
-    H0 = sum(0.5 * omega_tls[i] * sz[i] for i in range(N_TLS))
-    Hint = 0
-    for i in range(N_TLS):
-        for j in range(i+1, N_TLS):
-            Hint += J * (sx[i] * sx[j])
-    H_static = H0 + Hint
-
-    # initial system state
-    evals, evecs = H_static.eigenstates()
-    psi0 = evecs[0] # initial state
-    rho0 = ket2dm(psi0) # initial density matrix
-
+    # build hamiltonian
     H_full = QobjEvo(
         [H_static,
         [sum(sx), drive_coeff]],
@@ -231,13 +236,9 @@ def main():
         }
     )
 
-    # ---------------------- HEOM Bath ----------------------
-    Q_bath = sum(sx)
-    bath = DrudeLorentzBath(Q_bath, lam=lam, gamma=gamma_bath, T=T, Nk=Nk)
-
-    # ---------------------- Solve ----------------------
     print("Solving dynamics...")
 
+    # solve heom
     solver = HEOMSolver(
             H_full,
             [bath],
@@ -251,6 +252,7 @@ def main():
         e_ops=[collective_excitation, collective_sp]
     )
 
+    # solve markovian
     result_mark = mesolve(
         H_full,
         psi0,
@@ -261,7 +263,7 @@ def main():
     )
     print("Done solving dynamics.")
 
-    # ---------------------- Compute Q(t) ----------------------
+    # compute husimi Q
     Qt_mark = np.zeros((len(tlist), len(theta_grid), len(phi_grid)))
     Qt_heom = np.zeros((len(tlist), len(theta_grid), len(phi_grid)))
 
@@ -279,26 +281,26 @@ def main():
             Qt_heom[t_idx] = Q
 
     print("Saving data...")
-    os.makedirs("husimi_data",exist_ok=True)
+    os.makedirs("husimi_data", exist_ok=True)
     np.savez(f"husimi_data/husimi_data_NTLS{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_Nk{Nk}_depth{max_depth}.npz", Qt_mark=Qt_mark, Qt_heom=Qt_heom, theta_grid=theta_grid, phi_grid=phi_grid, tlist=tlist)
     print("Data saved successfully.")
 
-    # ---------------------- Generate animation ----------------------
+    # generate animation
     generate_animation(Qt_mark, Qt_heom, tlist)
     sys.exit(0)
 
-# ---------------------- Parse args ----------------------
-parser = argparse.ArgumentParser(description="Husimi Q-function animation for interacting TLS")
-parser.add_argument("--npz", type=str, default=None, help="Path to .npz file containing precomputed Husimi Q data")
-args = parser.parse_args()
-
-if args.npz:
-    print(f"Loading precomputed data from {args.npz}...")
-    data = np.load(args.npz)
-    Qt_mark = data['Qt_mark']
-    Qt_heom = data['Qt_heom']
-    tlist = data['tlist']
-    print("Data loaded successfully.")
-    generate_animation(Qt_mark, Qt_heom, tlist)
-else: 
-    main()
+if __name__ == "__main__":
+    # parse args
+    parser = argparse.ArgumentParser(description="Husimi Q-function animation for interacting TLS")
+    parser.add_argument("--npz", type=str, default=None, help="Path to .npz file containing precomputed Husimi Q data")
+    args = parser.parse_args()
+    if args.npz:
+        print(f"Loading precomputed data from {args.npz}...")
+        data = np.load(args.npz)
+        Qt_mark = data['Qt_mark']
+        Qt_heom = data['Qt_heom']
+        tlist = data['tlist']
+        print("Data loaded successfully.")
+        generate_animation(Qt_mark, Qt_heom, tlist)
+    else: 
+        run_full_sim()
