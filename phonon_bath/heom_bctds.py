@@ -34,7 +34,7 @@ N_TLS = 2 # number of TLS in the system
 
 # generate TLS frequencies
 np.random.seed(17)
-omega_tls = [np.random.uniform(3.0, 5.0, N_TLS)] # GHz
+omega_tls = np.random.uniform(3.0, 5.0, N_TLS) # GHz
 print(f"TLS frequencies: {omega_tls}")
 
 # time list and drive frequencies
