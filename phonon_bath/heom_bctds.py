@@ -9,12 +9,12 @@ from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import os
 import argparse
 # ---------------------- System Parameters ----------------------
-J = 0.01 # interaction strength
+J = 0.02 # interaction strength
 
-Omega_amp = 0.2 # drive strength
+Omega_amp = 0.1 # drive strength
 
 # bath parameters
-lam = 0.02 # coupling strength
+lam = 0.001 # coupling strength
 gamma_bath = 0.05
 T = 0.5 # temperature
 
@@ -23,8 +23,8 @@ Nk = 3
 max_depth = 5
 
 # time parameters
-T_total = 20 # ns
-T_drive = 20.0   # ns
+T_total = 1600 # ns
+T_drive = 100.0   # ns
 dt = 0.5 # ns
 
 DISORDER = False # set to True to include disorder in the system parameters
@@ -34,13 +34,13 @@ N_TLS = 2 # number of TLS in the system
 
 # generate TLS frequencies
 np.random.seed(17)
-omega_tls = np.random.uniform(3.0, 5.0, N_TLS) # GHz
+omega_tls = [np.random.uniform(3.0, 5.0, N_TLS)] # GHz
 print(f"TLS frequencies: {omega_tls}")
 
 # time list and drive frequencies
 tlist = np.arange(0, T_total, dt)
 n_time = len(tlist)
-omega_d_vals = np.linspace(3.0, 5.0, 5)
+omega_d_vals = np.linspace(3.0, 5.0, 500)
 
 ap = argparse.ArgumentParser(description="HEOM vs Markovian comparison for two coupled TLS under square pulse drive")
 ap.add_argument("--tag", type=str, default="", help="Tag for output files")
@@ -182,6 +182,10 @@ def plot_fft_map(fft_freqs_mark, fft_data_mark, fft_freqs_heom, fft_data_heom, o
     ax[1].set_title("FFT of phase*env (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("FFT Frequency (GHz)")
+
+    # add bare eigenfrequencies as vertical lines
+    for i in range(2):
+        ax[i].vlines(x=omega_tls, color='black', ymin=fft_freqs_heom[0], ymax=fft_freqs_heom[-1], linestyle='--', linewidth=0.9)
 
     # colorbar
     cb3 = fig.colorbar(im1, cax=ax[2])
@@ -331,7 +335,7 @@ def compute_fft(omega_d, sp_t):
 # ---------------------- Simulation ----------------------
 def run_full_sim():
     print(f"Starting simulations with parameters: \nN_TLS={N_TLS} \nJ={J} \nOmega_amp={Omega_amp} \nlam={lam}" +
-        "\ngamma_bath={gamma_bath} \nT={T} \nNk={Nk} \nmax_depth={max_depth} + \nT_total={T_total} \nT_drive={T_drive}")
+        f"\ngamma_bath={gamma_bath} \nT={T} \nNk={Nk} \nmax_depth={max_depth} \nT_total={T_total} \nT_drive={T_drive}")
 
     exc_mark = np.zeros((len(omega_d_vals), n_time))
     sp_mark = np.zeros((len(omega_d_vals), n_time), dtype=complex)
