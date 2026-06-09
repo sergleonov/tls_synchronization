@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from qutip import *
 from tqdm import tqdm
 import multiprocessing
@@ -14,7 +15,7 @@ J = 0.02 # interaction strength
 Omega_amp = 0.1 # drive strength
 
 # bath parameters
-lam = 0.001 # coupling strength
+lam = 0.02 # coupling strength
 gamma_bath = 0.05
 T = 0.5 # temperature
 
@@ -40,7 +41,7 @@ print(f"TLS frequencies: {omega_tls}")
 # time list and drive frequencies
 tlist = np.arange(0, T_total, dt)
 n_time = len(tlist)
-omega_d_vals = np.linspace(3.0, 5.0, 500)
+omega_d_vals = np.linspace(3.0, 5.0, 300)
 
 ap = argparse.ArgumentParser(description="HEOM vs Markovian comparison for two coupled TLS under square pulse drive")
 ap.add_argument("--tag", type=str, default="", help="Tag for output files")
@@ -165,11 +166,16 @@ def drive_coeff(t, args):
 def plot_fft_map(fft_freqs_mark, fft_data_mark, fft_freqs_heom, fft_data_heom, omega_d_vals, tag):
     gridspec = {'width_ratios': [1, 1, 0.1]}
     fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
+    # normalize cmaps
+    vmin=min(np.min(fft_data_heom), np.min(fft_data_mark))
+    vmax=max(np.max(fft_data_heom), np.max(fft_data_mark))
     # plot markov
     im0 = ax[0].imshow(fft_data_mark.T,
                         extent=[omega_d_vals[0], omega_d_vals[-1],
                                 fft_freqs_mark[0], fft_freqs_mark[-1]],
-                        origin='lower', aspect='auto', cmap='Oranges')
+                        origin='lower', aspect='auto', cmap='Oranges',
+                        vmin=vmin,
+                        vmax=vmax)
     ax[0].set_title("FFT of phase*env (Markovian, square pulse)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("FFT Frequency (GHz)")
@@ -178,7 +184,9 @@ def plot_fft_map(fft_freqs_mark, fft_data_mark, fft_freqs_heom, fft_data_heom, o
     im1 = ax[1].imshow(fft_data_heom.T,
                         extent=[omega_d_vals[0], omega_d_vals[-1],
                                 fft_freqs_heom[0], fft_freqs_heom[-1]],
-                        origin='lower', aspect='auto', cmap='Oranges')
+                        origin='lower', aspect='auto', cmap='Oranges',
+                        vmin=vmin,
+                        vmax=vmax)
     ax[1].set_title("FFT of phase*env (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("FFT Frequency (GHz)")
@@ -200,11 +208,15 @@ def plot_fft_map(fft_freqs_mark, fft_data_mark, fft_freqs_heom, fft_data_heom, o
 def plot_exc_map(results_mark, results_heom, omega_d_vals, tlist, tag):
     gridspec = {'width_ratios': [1, 1, 0.1]}
     fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
-
+    # normalize cmaps
+    vmin=min(np.min(results_heom[0]), np.min(results_mark[0]))
+    vmax=max(np.max(results_heom[0]), np.max(results_mark[0]))
     # plot markov
     im0 = ax[0].imshow(np.transpose(results_mark[0]),
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='inferno')
+                origin='lower', aspect='auto', cmap='inferno',
+                vmin=vmin,
+                vmax=vmax)
     ax[0].set_title("⟨S₊S₋⟩ (Markovian, square pulse)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
@@ -212,7 +224,9 @@ def plot_exc_map(results_mark, results_heom, omega_d_vals, tlist, tag):
     # plot heom
     im1 = ax[1].imshow(np.transpose(results_heom[0]),
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='inferno')
+                origin='lower', aspect='auto', cmap='inferno',
+                vmin=vmin,
+                vmax=vmax)
     ax[1].set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
@@ -230,11 +244,15 @@ def plot_exc_map(results_mark, results_heom, omega_d_vals, tlist, tag):
 def plot_sp_map(results_mark, results_heom, omega_d_vals, tlist, tag):
     gridspec = {'width_ratios': [1, 1, 0.1]}
     fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
-
+    # normalize cmaps
+    vmin=min(np.min(np.abs(results_heom[1])), np.min(np.abs(results_mark[1])))
+    vmax=max(np.max(np.abs(results_heom[1])), np.max(np.abs(results_mark[1])))
     # plot markov
     im0 = ax[0].imshow(np.transpose(np.abs(results_mark[1])),
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='inferno')
+                origin='lower', aspect='auto', cmap='inferno',
+                vmin=vmin,
+                vmax=vmax)
     ax[0].set_title("|⟨S₊⟩| (Markovian, square pulse)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
@@ -242,7 +260,9 @@ def plot_sp_map(results_mark, results_heom, omega_d_vals, tlist, tag):
     # plot heom
     im1 = ax[1].imshow(np.transpose(np.abs(results_heom[1])),
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='inferno')
+                origin='lower', aspect='auto', cmap='inferno',
+                vmin=vmin, 
+                vmax=vmax)
     ax[1].set_title("|⟨S₊⟩| (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
@@ -260,19 +280,28 @@ def plot_sp_map(results_mark, results_heom, omega_d_vals, tlist, tag):
 def plot_diff_map(results_mark, results_heom, omega_d_vals, tlist, tag):
     gridspec = {'width_ratios': [1, 1, 0.1]}
     fig, ax = plt.subplots(1, 3, figsize=(12,6), gridspec_kw=gridspec)
-
+    # compute diffs
+    exc_diff = np.transpose(results_mark[0] - results_heom[0])
+    sp_diff = np.transpose(np.abs(results_mark[1]) - np.abs(results_heom[1]))
+    # normalize cmaps
+    vmin=min(np.min(exc_diff), np.min(sp_diff))
+    vmax=max(np.max(exc_diff), np.max(sp_diff))
     # plot difference in total excitation
-    im0 = ax[0].imshow(np.transpose(results_mark[0] - results_heom[0]),
+    im0 = ax[0].imshow(exc_diff,
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='bwr')
+                origin='lower', aspect='auto', cmap='bwr',
+                vmin=vmin,
+                vmax=vmax)
     ax[0].set_title("Difference in ⟨S₊S₋⟩ (Markovian - HEOM)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
 
     # plot difference in sigma plus
-    im1 = ax[1].imshow(np.transpose(np.abs(results_mark[1]) - np.abs(results_heom[1])),
+    im1 = ax[1].imshow(sp_diff,
                 extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
-                origin='lower', aspect='auto', cmap='bwr')
+                origin='lower', aspect='auto', cmap='bwr',
+                vmin=vmin,
+                vmax=vmax)
     ax[1].set_title("Difference in |⟨S₊⟩| (Markovian - HEOM)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
