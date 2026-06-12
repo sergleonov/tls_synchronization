@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from scipy.signal import windows
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 import oqupy
@@ -17,9 +18,9 @@ gamma_bath = 0.05
 T = 0.5 # temperature
 
 # time parameters
-T_total = 200 # ns
-T_drive = 100.0   # ns
-dt = 5.0 # ns
+T_total = 10 # ns
+T_drive = 10.0   # ns
+dt = 0.5 # ns
 tcut = None
 epsrel = 1e-4
 
@@ -35,7 +36,7 @@ print(f"TLS frequencies: {omega_tls}")
 # time list and drive frequencies
 tlist = np.arange(0, T_total+dt, dt)
 n_time = len(tlist)
-omega_d_vals = np.linspace(3.0, 5.0, 200)
+omega_d_vals = np.linspace(3.0, 5.0, 10)
 
 ap = argparse.ArgumentParser(description="TEMPO Simulation for single TLS")
 ap.add_argument("--tag", type=str, default="", help="Tag for output files")
@@ -92,6 +93,10 @@ bath = oqupy.Bath(sum(sx_list), correlations)
 
 # compute process tensor
 tempo_params = oqupy.TempoParameters(dt=dt, tcut=tcut, epsrel=epsrel)
+print(oqupy.guess_tempo_parameters(bath=bath,
+                                   start_time=0.0,
+                                   end_time=T_total,
+                                   tolerance=0.01))
 process_tensor = oqupy.pt_tempo_compute(bath=bath,
                                         start_time=0.0,
                                         end_time=T_total,
@@ -126,12 +131,89 @@ def compute_tempo(omega_d):
                                       system=system,
                                       initial_state=rho0,
                                       start_time=0.0,
-                                      progress_type="bar")
+                                      progress_type="silent")
 
     t, exc_tempo = dynamics.expectations(np.matmul(collective_sp, collective_sm), real=True)
     t, sp_tempo  = dynamics.expectations(collective_sp, real=True)
 
     return exc_tempo, sp_tempo
+
+def smooth_envelope(amplitude, fraction=0.02):
+    N = len(amplitude)
+    win_len = int(max(3, min(N-1, np.round(N * fraction))))
+    if win_len % 2 == 0:
+        win_len += 1
+    kernel = np.ones(win_len) / win_len
+    return np.convolve(amplitude, kernel, mode='same')
+
+def compute_fft(omega_d, sp_t): 
+
+    window_fn = windows.hann(n_time)
+    window_rms = np.sqrt(np.mean(window_fn**2))
+    N_pad = 2**13
+
+    fft_data = []
+
+    for idx, omega_d in enumerate(omega_d_vals):
+        Splus_t = sp_t[idx, :]
+
+        LO = np.exp(-1j * omega_d * tlist)
+        demod = Splus_t * LO
+
+        phi = np.angle(demod)
+        amp = np.abs(demod)
+        env = smooth_envelope(amp)
+
+        phi_weighted = phi * env
+        phi_win = phi_weighted * window_fn
+
+        fft_vals = np.fft.rfft(phi_win, n=N_pad)
+        fft_amp = np.abs(fft_vals) / window_rms
+
+        fft_data.append(fft_amp)
+
+    fft_data = np.array(fft_data)
+    fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
+
+    # limit the plot to observe the features
+    fmax = 0.1 # GHz
+    idx_max = np.searchsorted(fft_freqs, fmax) 
+
+    fft_data = fft_data[:, :idx_max]
+    fft_freqs = fft_freqs[:idx_max]
+
+    return fft_freqs, fft_data
+
+def plot_fft_map(fft_freqs, fft_data, omega_d_vals, tag):
+    gridspec = {'width_ratios': [1, 0.1]}
+    fig, ax = plt.subplots(1, 2, figsize=(12,6), gridspec_kw=gridspec)
+    # normalize cmaps
+    vmin=np.min(fft_data)
+    vmax=np.max(fft_data)
+    # plot markov
+    im0 = ax[0].imshow(fft_data.T,
+                        extent=[omega_d_vals[0], omega_d_vals[-1],
+                                fft_freqs[0], fft_freqs[-1]],
+                        origin='lower', aspect='auto', cmap='Oranges',
+                        vmin=vmin,
+                        vmax=vmax)
+    ax[0].set_title("FFT of phase*env")
+    ax[0].set_xlabel("Drive Frequency (GHz)")
+    ax[0].set_ylabel("FFT Frequency (GHz)")
+
+    # add bare eigenfrequencies as vertical lines
+    for i in range(2):
+        ax[i].vlines(x=omega_tls, color='black', ymin=fft_freqs[0], ymax=fft_freqs[-1], linestyle='--', linewidth=0.9)
+
+    # colorbar
+    cb3 = fig.colorbar(im0, cax=ax[1])
+    cb3.set_label(r"$|\mathrm{FFT}(\phi)|$ (arb.)", labelpad=14)
+    plt.tight_layout()
+
+    # save and show
+    if SAVE_FIG:
+        os.makedirs("tempo_figures",exist_ok=True)
+        plt.savefig(f"tempo_figures/tempo_fft_map_cut_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_dt{dt}_tcut{tcut}_{tag}.png")
 
 def plot_exc_map(res, omega_d_vals, tlist, tag):
     gridspec = {'width_ratios': [1, 0.1]}
@@ -191,15 +273,20 @@ def run_sim():
     exc_list = np.zeros((len(omega_d_vals), n_time))
     sp_list  = np.zeros((len(omega_d_vals), n_time))
 
-    # with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+    with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
 
-    for idx, omega_d in enumerate(omega_d_vals):
-        exc_list[idx,:], sp_list[idx,:] = compute_tempo(omega_d)
+        for idx, (exc_res, sp_res) in enumerate(tqdm(executor.map(compute_tempo, omega_d_vals),
+                                                total=len(omega_d_vals),
+                                                desc="TEMPO Simulations")):
+            exc_list[idx,:], sp_list[idx,:] = exc_res, sp_res
 
-    res = (exc_list, sp_list)
+        res = (exc_list, sp_list)
+    
+    fft_freqs, fft_data = compute_fft(omega_d_vals, res[1])
     
     plot_exc_map(res, omega_d_vals, tlist, args.tag)
     plot_sp_map(res, omega_d_vals, tlist, args.tag)
+    plot_fft_map(fft_freqs, fft_data, omega_d_vals, args.tag)
     plt.show()
 
 
