@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
 from qutip import *
 from tqdm import tqdm
 import multiprocessing
@@ -86,7 +85,7 @@ H0 = sum(0.5 * omega_tls[i] * sz[i] for i in range(N_TLS))
 Hint = 0
 for i in range(N_TLS):
     for j in range(i+1, N_TLS):
-        Hint += J * (sx[i] * sx[j])
+        Hint += J * (sz[i] * sz[j])
 H_static = H0 + Hint
 
 # ---------------------- HEOM Bath ----------------------

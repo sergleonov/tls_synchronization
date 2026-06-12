@@ -18,10 +18,10 @@ gamma_bath = 0.05
 T = 0.5 # temperature
 
 # time parameters
-T_total = 10 # ns
-T_drive = 10.0   # ns
+T_total = 1600 # ns
+T_drive = 100.0   # ns
 dt = 0.5 # ns
-tcut = None
+tcut = 5.0
 epsrel = 1e-4
 
 SAVE_FIG = True # set to True to save figures
@@ -36,7 +36,7 @@ print(f"TLS frequencies: {omega_tls}")
 # time list and drive frequencies
 tlist = np.arange(0, T_total+dt, dt)
 n_time = len(tlist)
-omega_d_vals = np.linspace(3.0, 5.0, 10)
+omega_d_vals = np.linspace(3.0, 5.0, 300)
 
 ap = argparse.ArgumentParser(description="TEMPO Simulation for single TLS")
 ap.add_argument("--tag", type=str, default="", help="Tag for output files")
@@ -93,10 +93,7 @@ bath = oqupy.Bath(sum(sx_list), correlations)
 
 # compute process tensor
 tempo_params = oqupy.TempoParameters(dt=dt, tcut=tcut, epsrel=epsrel)
-print(oqupy.guess_tempo_parameters(bath=bath,
-                                   start_time=0.0,
-                                   end_time=T_total,
-                                   tolerance=0.01))
+
 process_tensor = oqupy.pt_tempo_compute(bath=bath,
                                         start_time=0.0,
                                         end_time=T_total,
@@ -270,6 +267,9 @@ def plot_sp_map(res, omega_d_vals, tlist, tag):
         plt.savefig(f"tempo_figures/tempo_sp_map_N_tls_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_dt{dt}_tcut{tcut}_{tag}.png")
 
 def run_sim():
+    print(f"Starting TEMPO simulation with parameters: \nN_TLS={N_TLS} \nJ={J} \nOmega_amp={Omega_amp} \nlam={lam}" +
+        f"\ngamma_bath={gamma_bath} \nT={T} \ntcut={tcut} \ndt={dt} \nepsrel={epsrel} \nT_total={T_total} \nT_drive={T_drive}")
+
     exc_list = np.zeros((len(omega_d_vals), n_time))
     sp_list  = np.zeros((len(omega_d_vals), n_time))
 
@@ -282,15 +282,38 @@ def run_sim():
 
         res = (exc_list, sp_list)
     
+    print("Computing FFT data...")
     fft_freqs, fft_data = compute_fft(omega_d_vals, res[1])
+
+    os.makedirs("tempo_data", exist_ok=True)
+    np.savez(f"tempo_data/tempo_data_N_TLS_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_dt{dt}_tcut{tcut}_{args.tag}.npz",
+             results=res, omega_d_vals=omega_d_vals, tlist=tlist,
+             fft_freqs=fft_freqs, fft_data=fft_data)
     
+    print("Plotting results...")
     plot_exc_map(res, omega_d_vals, tlist, args.tag)
     plot_sp_map(res, omega_d_vals, tlist, args.tag)
     plot_fft_map(fft_freqs, fft_data, omega_d_vals, args.tag)
     plt.show()
+    print("Done.")
 
 
 if __name__ == "__main__":
-    run_sim()
+    if args.npz:
+        print(f"Loading data from {args.npz}...")
+        data = np.load(args.npz, allow_pickle=True)
+        results = data['results']
+        omega_d_vals = data['omega_d_vals']
+        tlist = data['tlist']
+        fft_freqs = data['fft_freqs']
+        fft_data = data['fft_data']
 
+        print("Plotting results...")
+        plot_exc_map(results, omega_d_vals, tlist, args.tag)
+        plot_sp_map(results, omega_d_vals, tlist, args.tag)
+        plot_fft_map(fft_freqs, fft_data, omega_d_vals, args.tag)
+        plt.show()
+        print("Done.")
+    else:
+        run_sim()
     
