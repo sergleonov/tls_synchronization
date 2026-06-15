@@ -125,7 +125,6 @@ def compute_heom(omega_d):
     return np.real(result.expect[0]), result.expect[1]
 
 def compute_mark(omega_d):
-
     H_full = QobjEvo(
         [H_static,
         [sum(sx), drive_coeff]],
@@ -216,7 +215,7 @@ def plot_exc_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='inferno',
                 vmin=vmin,
                 vmax=vmax)
-    ax[0].set_title("⟨S₊S₋⟩ (Markovian, square pulse)")
+    ax[0].set_title(r"$ \langle S_+S_- \rangle $ (Markovian, square pulse)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
 
@@ -226,7 +225,7 @@ def plot_exc_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='inferno',
                 vmin=vmin,
                 vmax=vmax)
-    ax[1].set_title("⟨S₊S₋⟩ (HEOM, square pulse)")
+    ax[1].set_title(r"$ \langle S_+S_- \rangle $ (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
 
@@ -252,7 +251,7 @@ def plot_sp_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='inferno',
                 vmin=vmin,
                 vmax=vmax)
-    ax[0].set_title("|⟨S₊⟩| (Markovian, square pulse)")
+    ax[0].set_title(r"$ | \langle S_+ \rangle | $ (Markovian, square pulse)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
 
@@ -262,7 +261,7 @@ def plot_sp_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='inferno',
                 vmin=vmin, 
                 vmax=vmax)
-    ax[1].set_title("|⟨S₊⟩| (HEOM, square pulse)")
+    ax[1].set_title(r"$ | \langle S_+ \rangle | $ (HEOM, square pulse)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
 
@@ -291,7 +290,7 @@ def plot_diff_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='bwr',
                 vmin=vmin,
                 vmax=vmax)
-    ax[0].set_title("Difference in ⟨S₊S₋⟩ (Markovian - HEOM)")
+    ax[0].set_title(r"Difference in $ \langle S_+S_- \rangle $ (Markovian - HEOM)")
     ax[0].set_xlabel("Drive Frequency (GHz)")
     ax[0].set_ylabel("Time (ns)")
 
@@ -301,7 +300,7 @@ def plot_diff_map(results_mark, results_heom, omega_d_vals, tlist, tag):
                 origin='lower', aspect='auto', cmap='bwr',
                 vmin=vmin,
                 vmax=vmax)
-    ax[1].set_title("Difference in |⟨S₊⟩| (Markovian - HEOM)")
+    ax[1].set_title(r"Difference in $ | \langle S_+ \rangle | $(Markovian - HEOM)")
     ax[1].set_xlabel("Drive Frequency (GHz)")
     ax[1].set_ylabel("Time (ns)")
 
