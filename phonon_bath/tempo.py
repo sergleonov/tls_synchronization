@@ -108,7 +108,7 @@ collective_exc_mark = collective_sp_mark * collective_sm_mark
 
 # bath
 correlations = oqupy.PowerLawSD(alpha=lam,
-                                    zeta=2,
+                                    zeta=0.5,
                                     cutoff=gamma_bath,
                                     cutoff_type="exponential",
                                     temperature=T)
@@ -458,16 +458,21 @@ if __name__ == "__main__":
     if args.npz:
         print(f"Loading data from {args.npz}...")
         data = np.load(args.npz, allow_pickle=True)
-        results = data['results']
+        results_mark = data['results_mark']
+        results_tempo = data['results_tempo']
         omega_d_vals = data['omega_d_vals']
         tlist = data['tlist']
-        fft_freqs = data['fft_freqs']
-        fft_data = data['fft_data']
+        fft_freqs_mark = data['fft_freqs_mark']
+        fft_data_mark = data['fft_data_mark']
+        fft_freqs_tempo = data['fft_freqs_tempo']
+        fft_data_tempo = data['fft_data_tempo']
 
+        # plot results
         print("Plotting results...")
-        plot_exc_map(results, omega_d_vals, tlist, args.tag)
-        plot_sp_map(results, omega_d_vals, tlist, args.tag)
-        plot_fft_map(fft_freqs, fft_data, omega_d_vals, args.tag)
+        plot_exc_map(results_mark, results_tempo, omega_d_vals, tlist, args.tag)
+        plot_sp_map(results_mark, results_tempo, omega_d_vals, tlist, args.tag)
+        plot_diff_map(results_mark, results_tempo, omega_d_vals, tlist, args.tag)
+        plot_fft_map(fft_freqs_mark, fft_data_mark, fft_freqs_tempo, fft_data_tempo, omega_d_vals, args.tag)
         plt.show()
         print("Done.")
     else:
