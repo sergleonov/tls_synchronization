@@ -458,8 +458,8 @@ if __name__ == "__main__":
     if args.npz:
         print(f"Loading data from {args.npz}...")
         data = np.load(args.npz, allow_pickle=True)
-        results_mark = data['results_mark']
-        results_tempo = data['results_tempo']
+        results_mark = np.real(data['results_mark'])
+        results_tempo = np.real(data['results_tempo'])
         omega_d_vals = data['omega_d_vals']
         tlist = data['tlist']
         fft_freqs_mark = data['fft_freqs_mark']
