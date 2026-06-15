@@ -416,8 +416,8 @@ if __name__ == "__main__":
     if args.npz:
         print(f"Loading data from {args.npz}...")
         data = np.load(args.npz, allow_pickle=True)
-        results_mark = data['results_mark']
-        results_heom = data['results_heom']
+        results_mark = np.real(data['results_mark'])
+        results_heom = np.real(data['results_heom'])
         omega_d_vals = data['omega_d_vals']
         tlist = data['tlist']
         fft_freqs_mark = data['fft_freqs_mark']

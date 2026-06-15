@@ -441,7 +441,7 @@ def run_sim():
 
     os.makedirs("tempo_data", exist_ok=True)
     np.savez(f"tempo_data/tempo_data_N_TLS_{N_TLS}_gamma_bath_{gamma_bath}_drive_{Omega_amp}_lam_{lam}_T{T}_dt{dt}_tcut{tcut}_{args.tag}.npz",
-             results_tempoi=results_tempo, results_mark=results_mark, omega_d_vals=omega_d_vals, tlist=tlist,
+             results_tempo=results_tempo, results_mark=results_mark, omega_d_vals=omega_d_vals, tlist=tlist,
              fft_freqs_tempo=fft_freqs_tempo, fft_data_tempo=fft_data_tempo,
              fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark)
     
