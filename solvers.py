@@ -9,6 +9,7 @@ from qutip import *
 from qutip.solver.heom import DrudeLorentzBath, HEOMSolver
 import argparse
 from functools import partial
+import os
 
 
 class Solver:
@@ -262,10 +263,6 @@ class HEOM(Solver):
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
-        print(f"Starting simulations with parameters: \nN_TLS={self.n_tls} \nJ={self.J} \nOmega_amp={self.Omega_amp} \nlam={self.lam}" +
-        f"\ngamma_bath={self.gamma_bath} \nT={self.T} \nNk={self.Nk} \nmax_depth={self.max_depth} \nT_total={self.T_total} \nT_drive={self.T_drive}")
-
-
         exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
 
@@ -403,9 +400,6 @@ class TEMPO(Solver):
         return exc_tempo, sp_tempo
     
     def run(self):
-        print(f"Starting TEMPO simulation with parameters: \nN_TLS={self.n_tls} \nJ={self.J} \nOmega_amp={self.Omega_amp} \nlam={self.lam}" +
-        f"\ngamma_bath={self.gamma_bath} \nT={self.T} \ntcut={self.tcut} \ndt={self.dt} \nepsrel={self.epsrel} \nT_total={self.T_total} \nT_drive={self.T_drive}")
-
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
@@ -499,10 +493,6 @@ class Lindblad(Solver):
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
-        print(f"Starting simulations with parameters: \nN_TLS={self.n_tls} \nJ={self.J} \nOmega_amp={self.Omega_amp} \nlam={self.lam}" +
-        f"\ngamma_bath={self.gamma_bath} \nT={self.T} \nT_total={self.T_total} \nT_drive={self.T_drive}")
-
-
         exc_mark = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
 
@@ -516,6 +506,144 @@ class Lindblad(Solver):
             
             return (exc_mark, sp_mark)
 
-if __name__ == "__main__":
-    solver = TEMPO(T_total=10, T_drive=10, n_freqs=5)
-    heom_exc, heom_sp = solver.run()
+# Plots
+def find_max(mats):
+    res = np.max(mats[0])
+    for i in range(1, len(mats)):
+        res = max(res, np.max(mats[i]))
+    return res
+
+
+def find_min(mats):
+    res = np.min(mats[0])
+    for i in range(1, len(mats)):
+        res = min(res, np.min(mats[i]))
+    return res
+
+def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_map"):
+    n_plots = len(res_exc)
+    # check shape
+    for i in range(1, n_plots):
+        assert(len(omega_d_vals) == len(res_exc[i]))
+        assert(len(tlist) == len(res_exc[i][0]))
+    
+    gridspec = {'width_ratios': [1] * n_plots + [0.1]}
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(5*n_plots,6), gridspec_kw=gridspec)
+
+    # normalize cmaps
+    vmin = find_min(res_exc)
+    vmax = find_max(res_exc)
+
+    # plot
+    images = []
+    
+    for i in range(n_plots):
+        images.append(ax[i].imshow(np.transpose(res_exc[i]),
+                     extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+                     origin='lower', aspect='auto', cmap='inferno',
+                     vmin=vmin,
+                     vmax=vmax))
+        ax[i].set_title(r"$ \langle S_+S_- \rangle $ " + labels[i])
+        ax[i].set_xlabel("Drive Frequency (GHz)")
+        ax[i].set_ylabel("Time (ns)")
+
+    # colorbar
+    cb1 = fig.colorbar(images[-1], cax=ax[n_plots])
+    cb1.set_label(r"$\langle \sigma^{+}\sigma^{-} \rangle$ (arb.)", labelpad=14)
+    plt.tight_layout()
+
+    # save
+    if save:
+        os.makedirs("bctds_figures",exist_ok=True)
+        plt.savefig(f"bctds_figures/{filename}.png")
+
+def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map"):
+    n_plots = len(res_sp)
+    # check shape
+    for i in range(1, n_plots):
+        assert(len(omega_d_vals) == len(res_sp[i]))
+        assert(len(tlist) == len(res_sp[i][0]))
+    
+    gridspec = {'width_ratios': [1] * n_plots + [0.1]}
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(5*n_plots,6), gridspec_kw=gridspec)
+
+    # normalize cmaps
+    vmin = find_min(np.abs(res_sp))
+    vmax = find_max(np.abs(res_sp))
+
+    # plot
+    images = []
+    
+    for i in range(n_plots):
+        images.append(ax[i].imshow(np.transpose(np.abs(res_sp[i])),
+                     extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+                     origin='lower', aspect='auto', cmap='inferno',
+                     vmin=vmin,
+                     vmax=vmax))
+        ax[i].set_title(r"$ | \langle S_+ \rangle | $ " + labels[i])
+        ax[i].set_xlabel("Drive Frequency (GHz)")
+        ax[i].set_ylabel("Time (ns)")
+
+    # colorbar
+    cb1 = fig.colorbar(images[-1], cax=ax[n_plots])
+    cb1.set_label(r"$ | \langle \sigma^{+}\rangle | $ (arb.)", labelpad=14)
+    plt.tight_layout()
+
+    # save
+    if save:
+        os.makedirs("bctds_figures",exist_ok=True)
+        plt.savefig(f"bctds_figures/{filename}.png")
+
+def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filename="diff_map"):
+
+    assert(len(res_exc) == len(labels))
+    assert(len(res_sp) == len(labels))
+    
+    # check shape
+    for i in range(1, len(res_exc)):
+        assert(len(omega_d_vals) == len(res_exc[i]))
+        assert(len(tlist) == len(res_exc[i][0]))
+
+    # compute diffs
+    n_plots = 0
+    exc_diffs = {}
+    sp_diffs = {}
+    for i in range(len(res_exc)):
+        for j in range(i+1, len(res_exc)):
+            exc_diffs[r"$ \langle S_+S_- \rangle $ Difference " + f"({labels[i]} - {labels[j]})"] = res_exc[i] - res_exc[j]
+            sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = res_sp[i] - res_sp[j]
+            n_plots += 1
+    
+    gridspec = {'width_ratios': [1] * n_plots + [0.1]}
+    fig, ax = plt.subplots(2, n_plots + 1, figsize=(5*n_plots, 10), gridspec_kw=gridspec)
+
+    # normalize cmaps
+    vmin = find_min(res_exc)
+    vmax = find_max(res_exc)
+
+    # plot
+    images = []
+    for j, diffs in enumerate([exc_diffs, sp_diffs]):
+        for i, key in enumerate(diffs.keys()):
+            images.append(ax[j][i].imshow(np.transpose(diffs[key]),
+                        extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+                        origin='lower', aspect='auto', cmap='bwr',
+                        vmin=vmin,
+                        vmax=vmax))
+            ax[j][i].set_title(key)
+            ax[j][i].set_xlabel("Drive Frequency (GHz)")
+            ax[j][i].set_ylabel("Time (ns)")
+
+        # colorbar
+        cb1 = fig.colorbar(images[-1], cax=ax[j][n_plots])
+        if j == 0:
+            cb1.set_label(r"$ \langle S_+S_- \rangle $ Difference", labelpad=14)
+        else:
+            cb1.set_label(r"$ | \langle S_+ \rangle | $ Difference", labelpad=14)
+        plt.tight_layout()
+
+    # save
+    if save:
+        os.makedirs("bctds_figures",exist_ok=True)
+        plt.savefig(f"bctds_figures/{filename}.png")
+
