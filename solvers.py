@@ -626,20 +626,18 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
     sp_diffs = {}
     for i in range(len(res_exc)):
         for j in range(i+1, len(res_exc)):
-            exc_diffs[r"$ \langle S_+S_- \rangle $ Difference " + f"({labels[i]} - {labels[j]})"] = res_exc[i] - res_exc[j]
-            sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = np.abs(res_sp[i]) - np.abs(res_sp[j])
+            exc_diffs[r"$ \langle S_+S_- \rangle $ Difference " + f"({labels[i]} - {labels[j]})"] = np.subtract(res_exc[i], res_exc[j])
+            sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = np.subtract(np.abs(res_sp[i]), np.abs(res_sp[j]))
             n_plots += 1
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(2, n_plots + 1, figsize=(6*n_plots, 10), gridspec_kw=gridspec)
 
-    # normalize cmaps
-    vmin = find_min(res_exc)
-    vmax = find_max(res_exc)
-
     # plot
     images = []
     for j, diffs in enumerate([exc_diffs, sp_diffs]):
+        vmin = find_min(list(diffs.values()))
+        vmax = find_max(list(diffs.values()))
         for i, key in enumerate(diffs.keys()):
             images.append(ax[j][i].imshow(np.transpose(diffs[key]),
                         extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
