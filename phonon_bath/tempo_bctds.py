@@ -66,7 +66,7 @@ def main():
     # save results
     print("Saving data...")
     os.makedirs("bctds_data", exist_ok=True)
-    np.savez(f"bctds_data/data_{tempo}.npz",
+    np.savez(f"bctds_data/data_{tempo}_{args.tag}.npz",
             results_tempo=(tempo_exc, tempo_sp), results_mark=(mark_exc, mark_sp),
             fft_freqs_tempo=fft_freqs_tempo, fft_data_tempo=fft_data_tempo,
             fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark,
