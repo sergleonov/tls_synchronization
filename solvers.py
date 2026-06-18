@@ -371,7 +371,7 @@ class TEMPO(Solver):
                                         progress_type="silent")
 
         t, exc_tempo = dynamics.expectations(self.collective_exc, real=True)
-        t, sp_tempo  = dynamics.expectations(self.collective_exc, real=False)
+        t, sp_tempo  = dynamics.expectations(self.collective_sp, real=False)
 
         return exc_tempo, sp_tempo
     
