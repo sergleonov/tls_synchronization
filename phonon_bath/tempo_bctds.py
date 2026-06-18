@@ -64,6 +64,7 @@ def main():
     fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
 
     # save results
+    print("Saving data...")
     os.makedirs("bctds_data", exist_ok=True)
     np.savez(f"bctds_data/data_{tempo}.npz",
             results_tempo=(tempo_exc, tempo_sp), results_mark=(mark_exc, mark_sp),
@@ -85,11 +86,13 @@ def main():
             cutoff_type=cutoff_type,
             epsrel=epsrel)
 
+    print("Plotting results...")
     plot_exc_map(exc, tempo.omega_d_vals, tempo.tlist, labels=[mark._name, tempo._name], filename=f"exc_map_{tempo}_{args.tag}")
     plot_sp_map(sp, tempo.omega_d_vals, tempo.tlist, labels=[mark._name, tempo._name], filename=f"sp_map_{tempo}_{args.tag}")
     plot_diff_map(exc, sp, tempo.omega_d_vals, tempo.tlist, labels=[mark._name, tempo._name], filename=f"diff_map_{tempo}_{args.tag}")
     plot_fft_map([fft_freqs_mark, fft_freqs_tempo], [fft_data_mark, fft_data_tempo], tempo.omega_d_vals, tempo.omega_tls, labels=[mark._name, tempo._name], filename=f"fft_map_{tempo}_{args.tag}")
     plt.show()
+    print("Done.")
 
 if __name__ == "__main__":
     main()

@@ -59,6 +59,7 @@ def main():
     fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
 
     # save results
+    print("Saving data...")
     os.makedirs("bctds_data", exist_ok=True)
     np.savez(f"bctds_data/data_{heom}.npz",
             results_heom=(heom_exc, heom_sp), results_mark=(mark_exc, mark_sp),
@@ -78,11 +79,13 @@ def main():
             n_tls=n_tls,
             n_freqs=n_freqs)
 
+    print("Plotting results...")
     plot_exc_map(exc, heom.omega_d_vals, heom.tlist, labels=[mark._name, heom._name], filename=f"exc_map_{heom}_{args.tag}")
     plot_sp_map(sp, heom.omega_d_vals, heom.tlist, labels=[mark._name, heom._name], filename=f"sp_map_{heom}_{args.tag}")
     plot_diff_map(exc, sp, heom.omega_d_vals, heom.tlist, labels=[mark._name, heom._name], filename=f"diff_map_{heom}_{args.tag}")
     plot_fft_map([fft_freqs_mark, fft_freqs_heom], [fft_data_mark, fft_data_heom], heom.omega_d_vals, heom.omega_tls, labels=[mark._name, heom._name], filename=f"fft_map_{heom}_{args.tag}")
     plt.show()
+    print("Done.")
 
 if __name__ == "__main__":
     main()
