@@ -86,8 +86,7 @@ class Solver:
     def __str__(self):
         return(f"J_{self.J}_Omega_amp_{self.Omega_amp}_" + 
             f"lam_{self.lam}_gamma_bath_{self.gamma_bath}_" + 
-            f"T_{self.T}_Nk_{self.Nk}_max_depth_{self.max_depth}_" + 
-            f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
+            f"T_{self.T}_" + f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
     
     def _tensor(self, mats: list):
         res = mats[0]
@@ -224,7 +223,7 @@ class HEOM(Solver):
                             max_depth=d["max_depth"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__()
+        return self._name + "_" + super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}"
     
     def _worker(self, omega_d):
         H_full = QobjEvo(
@@ -354,7 +353,7 @@ class TEMPO(Solver):
                             epsrel=d["epsrel"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__()
+        return self._name + "_" + super().__str__() + f"_tcut{self.tcut}_zeta_{self.ohmicity}"
     
     def _worker(self, omega_d, process_tensor):
         # total hamiltonian
@@ -666,10 +665,9 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
 
 def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True, filename="fft_map"):
     n_plots = len(fft_freqs)
-    print(np.shape(fft_data))
     # check shape
     for i in range(n_plots):
-        assert(len(omega_d_vals) == len(fft_freqs[i]))
+        assert(len(omega_d_vals) == len(fft_data[i]))
         assert(len(fft_freqs[i]) == len(fft_freqs[0]))
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}

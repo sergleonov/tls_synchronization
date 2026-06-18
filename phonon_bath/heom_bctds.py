@@ -10,18 +10,18 @@ def main():
     args = ap.parse_args()
 
     tls_freqs = [3.75, 3.82]
-    J=0.02
-    Omega_amp=0.1
-    lam=0.02
-    gamma_bath=0.05
-    T=0.5
-    Nk=3
-    max_depth=5
-    T_total=100
-    T_drive=100.0
-    dt=0.5
-    n_tls=2
-    n_freqs=10
+    J = 0.02
+    Omega_amp = 0.1
+    lam = 0.02
+    gamma_bath = 0.05
+    T = 0.5
+    Nk = 3
+    max_depth = 5
+    T_total = 1600
+    T_drive = 100.0
+    dt = 0.5
+    n_tls = len(tls_freqs)
+    n_freqs = 300
 
     heom = HEOM(tls_freqs=tls_freqs, 
                 J=J, 
@@ -55,12 +55,12 @@ def main():
     exc = [mark_exc, heom_exc]
     sp  = [mark_sp, heom_sp]
 
-    fft_data_heom, fft_freqs_heom = compute_fft(heom_sp, heom.omega_d_vals, heom.tlist, heom.dt, heom.n_time)
-    fft_data_mark, fft_freqs_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
+    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, heom.omega_d_vals, heom.tlist, heom.dt, heom.n_time)
+    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
 
     # save results
     os.makedirs("bctds_data", exist_ok=True)
-    np.savez(f"bctds_data/tempo_data_{heom}.npz",
+    np.savez(f"bctds_data/data_{heom}.npz",
             results_heom=(heom_exc, heom_sp), results_mark=(mark_exc, mark_sp),
             fft_freqs_heom=fft_freqs_heom, fft_data_tempo=fft_data_heom,
             fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark,
