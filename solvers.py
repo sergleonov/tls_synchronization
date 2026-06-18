@@ -22,8 +22,6 @@ class Solver:
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 disorder=False, 
-                 save_fig=True, 
                  n_tls=2,
                  n_freqs=300,
                  is_qutip_solver=None):
@@ -41,8 +39,6 @@ class Solver:
         self.T_drive = T_drive   # ns
         self.dt = dt # ns
 
-        self.disorder = disorder # set to True to include disorder in the system parameters
-        self.save_fig = save_fig # set to True to save figures
         self.n_tls = n_tls # number of TLS in the system
         self.is_qutip_solver = is_qutip_solver
 
@@ -69,8 +65,6 @@ class Solver:
             "T_total":self.T_total, 
             "T_drive":self.T_drive, 
             "dt":self.dt, 
-            "disorder":self.disorder, 
-            "save_fig":self.save_fig, 
             "n_tls":self.n_tls,
             "n_freqs":self.n_freqs
         }
@@ -86,16 +80,13 @@ class Solver:
                     T_total=d["T_total"], 
                     T_drive=d["T_drive"], 
                     dt=d["dt"], 
-                    disorder=d["disorder"], 
-                    save_fig=d["save_fig"], 
                     n_tls=d["n_tls"],
                     n_freqs=d["n_freqs"])
 
     def __str__(self):
         return(f"J_{self.J}_Omega_amp_{self.Omega_amp}_" + 
             f"lam_{self.lam}_gamma_bath_{self.gamma_bath}_" + 
-            f"T_{self.T}_Nk_{self.Nk}_max_depth_{self.max_depth}_" + 
-            f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
+            f"T_{self.T}_" + f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
     
     def _tensor(self, mats: list):
         res = mats[0]
@@ -172,8 +163,6 @@ class HEOM(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 disorder=False, 
-                 save_fig=True, 
                  n_tls=2,
                  n_freqs=300):
         
@@ -186,8 +175,6 @@ class HEOM(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
-                        disorder=disorder, 
-                        save_fig=save_fig, 
                         n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=True)
@@ -229,16 +216,14 @@ class HEOM(Solver):
                             T=d["T"], 
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
-                            dt=d["dt"], 
-                            disorder=d["disorder"], 
-                            save_fig=d["save_fig"], 
+                            dt=d["dt"],  
                             n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"],
                             Nk=d["Nk"],
                             max_depth=d["max_depth"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__()
+        return self._name + "_" + super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}"
     
     def _worker(self, omega_d):
         H_full = QobjEvo(
@@ -286,8 +271,6 @@ class TEMPO(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 disorder=False, 
-                 save_fig=True, 
                  n_tls=2,
                  n_freqs=300,
                  zeta=1,
@@ -303,9 +286,7 @@ class TEMPO(Solver):
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
-                        dt=dt, 
-                        disorder=disorder, 
-                        save_fig=save_fig, 
+                        dt=dt,
                         n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=False)
@@ -364,8 +345,6 @@ class TEMPO(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
-                            disorder=d["disorder"], 
-                            save_fig=d["save_fig"], 
                             n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"],
                             zeta=d["ohmicity"],
@@ -374,7 +353,7 @@ class TEMPO(Solver):
                             epsrel=d["epsrel"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__()
+        return self._name + "_" + super().__str__() + f"_tcut{self.tcut}_zeta_{self.ohmicity}"
     
     def _worker(self, omega_d, process_tensor):
         # total hamiltonian
@@ -428,8 +407,6 @@ class Lindblad(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 disorder=False, 
-                 save_fig=True, 
                  n_tls=2,
                  n_freqs=300):
         
@@ -442,8 +419,6 @@ class Lindblad(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
-                        disorder=disorder, 
-                        save_fig=save_fig, 
                         n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=True)
@@ -569,7 +544,7 @@ def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_
         assert(len(tlist) == len(res_exc[i][0]))
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
-    fig, ax = plt.subplots(1, n_plots + 1, figsize=(5*n_plots,6), gridspec_kw=gridspec)
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots,6), gridspec_kw=gridspec)
 
     # normalize cmaps
     vmin = find_min(res_exc)
@@ -606,7 +581,7 @@ def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map
         assert(len(tlist) == len(res_sp[i][0]))
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
-    fig, ax = plt.subplots(1, n_plots + 1, figsize=(5*n_plots,6), gridspec_kw=gridspec)
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots,6), gridspec_kw=gridspec)
 
     # normalize cmaps
     vmin = find_min(np.abs(res_sp))
@@ -652,11 +627,11 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
     for i in range(len(res_exc)):
         for j in range(i+1, len(res_exc)):
             exc_diffs[r"$ \langle S_+S_- \rangle $ Difference " + f"({labels[i]} - {labels[j]})"] = res_exc[i] - res_exc[j]
-            sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = res_sp[i] - res_sp[j]
+            sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = np.abs(res_sp[i]) - np.abs(res_sp[j])
             n_plots += 1
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
-    fig, ax = plt.subplots(2, n_plots + 1, figsize=(5*n_plots, 10), gridspec_kw=gridspec)
+    fig, ax = plt.subplots(2, n_plots + 1, figsize=(6*n_plots, 10), gridspec_kw=gridspec)
 
     # normalize cmaps
     vmin = find_min(res_exc)
@@ -696,7 +671,7 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         assert(len(fft_freqs[i]) == len(fft_freqs[0]))
     
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
-    fig, ax = plt.subplots(1, n_plots + 1, figsize=(5*n_plots, 6), gridspec_kw=gridspec)
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots, 6), gridspec_kw=gridspec)
 
     # normalize cmaps
     vmin = find_min(fft_data)
@@ -707,11 +682,11 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
     
     for i in range(n_plots):
         images.append(ax[i].imshow(fft_data[i].T,
-                        extent=[omega_d_vals[0], omega_d_vals[-1],
-                                fft_freqs[i][0], fft_freqs[i][-1]],
-                        origin='lower', aspect='auto', cmap='Oranges',
-                     vmin=vmin,
-                     vmax=vmax))
+                      extent=[omega_d_vals[0], omega_d_vals[-1],
+                              fft_freqs[i][0], fft_freqs[i][-1]],
+                      origin='lower', aspect='auto', cmap='Oranges',
+                      vmin=vmin,
+                      vmax=vmax))
         ax[i].set_title(f"FFT Data {labels[i]}")
         ax[i].set_xlabel("Drive Frequency (GHz)")
         ax[i].set_ylabel("FFT Frequency (GHz)")
