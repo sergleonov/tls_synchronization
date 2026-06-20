@@ -196,15 +196,6 @@ class HEOM(Solver):
        # bath params for reconstructions
         self.sd_type = sd_type
         self.ohmicity = ohmicity
-        
-        # bath
-        match self.sd_type:
-            case "dl": # Drude-Lorentz
-                env = DrudeLorentzEnvironment(T=self.T, lam=self.lam, gamma=self.gamma_bath, Nk=self.Nk)
-                self.bath = env.approximate("matsubara", Nk=self.Nk)
-            case "pl": # Power Law
-                env = OhmicEnvironment(T=self.T, alpha=self.lam, wc=self.gamma_bath, s=self.ohmicity) # alpha is coupling, wc is cutoff
-                self.bath, info = env.approximate(method="cf", tlist=self.tlist, target_rmse=None, Nr_max=self.Nk, Ni_max=self.Nk, maxfev=1e8)
 
         # initial state
         self.evals, self.evecs = self.H.eigenstates()
@@ -237,7 +228,9 @@ class HEOM(Solver):
                             ohmicity=d["ohmicity"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}"
+        sd = self.sd_type
+        if sd == "power": sd += f"_{self.ohmicity}"
+        return self._name + "_" + super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -245,9 +238,10 @@ class HEOM(Solver):
         args = {"omega": omega_d}
         )
 
+        global _heom_bath
         solver = HEOMSolver(
             H_full,
-            (self.bath, sum(self.sx)),
+            (_heom_bath, sum(self.sx)),
             max_depth=self.max_depth,
             options={"nsteps": 5000, "progress_bar": ''},
         )
@@ -261,6 +255,18 @@ class HEOM(Solver):
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
+        # bath
+        global _heom_bath
+        match self.sd_type:
+            case "drude": # Drude-Lorentz
+                env = DrudeLorentzEnvironment(T=self.T, lam=self.lam, gamma=self.gamma_bath, Nk=self.Nk)
+                _heom_bath = env.approximate("matsubara", Nk=self.Nk)
+            case "power": # Power Law
+                env = OhmicEnvironment(T=self.T, alpha=self.lam, wc=self.gamma_bath, s=self.ohmicity) # alpha is coupling, wc is cutoff
+                _heom_bath, info = env.approximate(method="cf", tlist=self.tlist, target_rmse=None, Nr_max=self.Nk, Ni_max=self.Nk, maxfev=1e8)
+            case _: 
+                raise ValueError("Invalid spectral density type.")
+
         exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
 

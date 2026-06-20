@@ -18,11 +18,14 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 1600
+    T_total = 300
     T_drive = 100.0
     dt = 0.5
     n_tls = len(tls_freqs)
-    n_freqs = 300
+    n_freqs = 100
+
+    sd_type = "power"
+    ohmicity = 3
 
     heom = HEOM(tls_freqs=tls_freqs, 
                 J=J, 
@@ -36,7 +39,9 @@ def main():
                 T_drive=T_drive, 
                 dt=dt, 
                 n_tls=n_tls,
-                n_freqs=n_freqs)
+                n_freqs=n_freqs,
+                sd_type=sd_type,
+                ohmicity=ohmicity)
     
     mark = Lindblad(tls_freqs=tls_freqs, 
                     J=J, 
