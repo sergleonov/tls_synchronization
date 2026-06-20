@@ -2,6 +2,7 @@ import sys
 import argparse
 sys.path.append("../")
 from solvers import *
+from bctds_plots import *
 
 
 def main():
@@ -48,7 +49,7 @@ def main():
                     dt=dt, 
                     n_tls=n_tls,
                     n_freqs=n_freqs)
-
+    
     heom_exc, heom_sp = heom.run()
     mark_exc, mark_sp = mark.run()
 

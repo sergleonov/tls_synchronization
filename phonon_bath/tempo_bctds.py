@@ -2,6 +2,7 @@ import sys
 import argparse
 sys.path.append("../")
 from solvers import *
+from bctds_plots import *
 
 
 def main():
