@@ -8,9 +8,11 @@ from qutip.solver.heom import HEOMSolver
 from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment
 from functools import partial
 
+SOLVERS = ["Markovian", "Tiered", "HEOM", "TEMPO"]
+SD_TYPES = ["power", "drude"]
 
 class Solver:
-    def __init__(self, 
+    def __init__(self,
                  tls_freqs=None, 
                  J=0.02, 
                  Omega_amp=0.1, 
@@ -22,7 +24,11 @@ class Solver:
                  dt=0.5, 
                  n_tls=2,
                  n_freqs=300,
-                 is_qutip_solver=None):
+                 is_qutip_solver=None,
+                 name="Abstract"):
+
+        assert name in SOLVERS, "Error: Invalid solver name"
+        self._name = name
         
         self.J = J # interaction strength
         self.Omega_amp = Omega_amp # drive strength
@@ -64,7 +70,8 @@ class Solver:
             "T_drive":self.T_drive, 
             "dt":self.dt, 
             "n_tls":self.n_tls,
-            "n_freqs":self.n_freqs
+            "n_freqs":self.n_freqs,
+            "name":self._name
         }
         return d
 
@@ -79,10 +86,11 @@ class Solver:
                     T_drive=d["T_drive"], 
                     dt=d["dt"], 
                     n_tls=d["n_tls"],
-                    n_freqs=d["n_freqs"])
+                    n_freqs=d["n_freqs"],
+                    name=d["name"])
 
     def __str__(self):
-        return(f"J_{self.J}_Omega_amp_{self.Omega_amp}_" + 
+        return(f"{self._name}_J_{self.J}_Omega_amp_{self.Omega_amp}_" + 
             f"lam_{self.lam}_gamma_bath_{self.gamma_bath}_" + 
             f"T_{self.T}_" + f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
     
@@ -94,27 +102,79 @@ class Solver:
         for i in range(1, len(mats)):
             res = np.kron(res, mats[i])
         return res
+    
+    def _build_c_ops(self):
+        # collapse ops with temperature dependence
+        n_th = []
+        for i in range(self.n_tls):
+            n_th.append(1 / (np.exp(self.omega_tls[i] / self.T) - 1))
+        self.c_ops = []
+        for i in range(self.n_tls):
+            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * self.sm[i])
+            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * self.sp[i])
+        if self._name == "Tiered": 
+            self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
+            self.c_ops.append(self.a)
 
     def build_operators(self):
-        self.sx = []
-        self.sz = []
-        self.sm = []
-        self.sp = []
+        assert self._name in SOLVERS, "Error: Invalid solver name"
+
+        sx_tls = []
+        sz_tls = []
+        sm_tls = []
+        sp_tls = []
 
         for i in range(self.n_tls):
             op_list = [qt.qeye(2) if self.is_qutip_solver else np.eye(2) for _ in range(self.n_tls)]
             op_list[i] = qt.sigmax() if self.is_qutip_solver else oqupy.operators.sigma("x")
-            self.sx.append(self._tensor(op_list))
+            sx_tls.append(self._tensor(op_list))
             
             op_list[i] = qt.sigmaz() if self.is_qutip_solver else oqupy.operators.sigma("z")
-            self.sz.append(self._tensor(op_list))
+            sz_tls.append(self._tensor(op_list))
             
             op_list[i] = qt.sigmam() if self.is_qutip_solver else oqupy.operators.sigma("-")
-            self.sm.append(self._tensor(op_list))
+            sm_tls.append(self._tensor(op_list))
             
             op_list[i] = qt.sigmap() if self.is_qutip_solver else oqupy.operators.sigma("+")
-            self.sp.append(self._tensor(op_list))
+            sp_tls.append(self._tensor(op_list))
 
+        match self._name:
+            case "Markovian":
+                self.sx = sx_tls
+                self.sz = sz_tls
+                self.sp = sp_tls
+                self.sm = sm_tls
+                # collapse operators
+                self._build_c_ops()
+
+            case "Tiered":
+                self.sx = []
+                self.sz = []
+                self.sp = []
+                self.sm = []
+                I_cav = qt.qeye(self.Nb) 
+                for i in range(self.n_tls):
+                    op_list = [sx_tls[i], I_cav]
+                    self.sx.append(self._tensor(op_list))
+
+                    op_list = [sz_tls[i], I_cav]
+                    self.sz.append(self._tensor(op_list))
+
+                    op_list = [sp_tls[i], I_cav]
+                    self.sp.append(self._tensor(op_list))
+
+                    op_list = [sm_tls[i], I_cav]
+                    self.sm.append(self._tensor(op_list))
+                # annihilator and collapse operators
+                self._build_c_ops()
+        
+            case _:
+                self.sx = sx_tls
+                self.sz = sz_tls
+                self.sp = sp_tls
+                self.sm = sm_tls
+        
+        # observables
         self.collective_sp = sum(self.sp)
         self.collective_sm = sum(self.sm)
         if self.is_qutip_solver:
@@ -122,25 +182,20 @@ class Solver:
         else:
             self.collective_exc = np.matmul(self.collective_sp, self.collective_sm)
 
-        if self._name == "Markovian":
-            # collapse ops with temperature dependence
-            n_th = []
-            for i in range(self.n_tls):
-                n_th.append(1 / (np.exp(self.omega_tls[i] / self.T) - 1))
-            self.c_ops = []
-            for i in range(self.n_tls):
-                self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * self.sm[i])
-                self.c_ops.append(np.sqrt(self.lam * n_th[i]) * self.sp[i])
+    def build_hamiltonian(self):
+        assert self._name in SOLVERS, "Error: Invalid solver name"
 
-    def get_hamiltonian(self):
         self.H = sum(0.5 * self.omega_tls[i] * self.sz[i] for i in range(self.n_tls))
         for i in range(self.n_tls):
             for j in range(i+1, self.n_tls):
-                if isinstance(self.sx[0], qt.Qobj):
+                if self.is_qutip_solver:
                     self.H += self.J * self.sz[i] * self.sz[j]
                 else:
                     self.H += self.J * np.matmul(self.sz[i], self.sz[j])
 
+        if self._name == "Tiered":
+            self.H += self.omega_c * self.a.dag() * self.a # cavity hamiltonian
+            self.H += self.lam * sum(self.sx) * self.a.dag() * self.a # system-bath hamiltonian
     
     def drive_coeff(self, t, args):
         if 0.0 <= t <= self.T_drive:
@@ -163,7 +218,7 @@ class HEOM(Solver):
                  dt=0.5, 
                  n_tls=2,
                  n_freqs=300,
-                 sd_type="dl",
+                 sd_type="drude",
                  ohmicity=None):
         
         super().__init__(tls_freqs=tls_freqs, 
@@ -177,9 +232,10 @@ class HEOM(Solver):
                         dt=dt, 
                         n_tls=n_tls,
                         n_freqs=n_freqs,
-                        is_qutip_solver=True)
-        # label
-        self._name = "HEOM"
+                        is_qutip_solver=True,
+                        name="HEOM")
+        
+        assert sd_type in SD_TYPES, "Error: Invalid spectral density"
 
         # number of expansion terms
         self.Nk = Nk
@@ -191,7 +247,7 @@ class HEOM(Solver):
         self.build_operators()
 
         # build static hamiltonian
-        self.get_hamiltonian()
+        self.build_hamiltonian()
 
        # bath params for reconstructions
         self.sd_type = sd_type
@@ -208,6 +264,7 @@ class HEOM(Solver):
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type
         d["ohmicity"] = self.ohmicity
+        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         return d
 
     def __setstate__(self, d):
@@ -228,9 +285,10 @@ class HEOM(Solver):
                             ohmicity=d["ohmicity"])
     
     def __str__(self):
+        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         sd = self.sd_type
         if sd == "power": sd += f"_{self.ohmicity}"
-        return self._name + "_" + super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
+        return super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -255,6 +313,7 @@ class HEOM(Solver):
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
+        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         # bath
         global _heom_bath
         match self.sd_type:
@@ -309,9 +368,8 @@ class TEMPO(Solver):
                         dt=dt,
                         n_tls=n_tls,
                         n_freqs=n_freqs,
-                        is_qutip_solver=False)
-        # label
-        self._name = "TEMPO"
+                        is_qutip_solver=False,
+                        name="TEMPO")
 
         # power las SD
         self.ohmicity = zeta
@@ -329,7 +387,7 @@ class TEMPO(Solver):
         self.build_operators()
 
         # build static hamiltonian
-        self.get_hamiltonian()
+        self.build_hamiltonian()
 
         # define bath
         #TODO: changing bath type. will need to adjust pickling procedure
@@ -373,7 +431,7 @@ class TEMPO(Solver):
                             epsrel=d["epsrel"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__() + f"_tcut{self.tcut}_zeta_{self.ohmicity}"
+        return super().__str__() + f"_tcut{self.tcut}_zeta_{self.ohmicity}"
     
     def _worker(self, omega_d, process_tensor):
         # total hamiltonian
@@ -441,15 +499,14 @@ class Lindblad(Solver):
                         dt=dt, 
                         n_tls=n_tls,
                         n_freqs=n_freqs,
-                        is_qutip_solver=True)
-        # label
-        self._name = "Markovian"
+                        is_qutip_solver=True,
+                        name="Markovian")
 
         # build operators
         self.build_operators()
 
         # build static hamiltonian
-        self.get_hamiltonian()
+        self.build_hamiltonian()
 
         # initial state
         self.evals, self.evecs = self.H.eigenstates()
@@ -460,10 +517,20 @@ class Lindblad(Solver):
         return super().__getstate__()
 
     def __setstate__(self, d):
-        return super().__setstate__(d)
+        return self.__init__(tls_freqs=d["tls_freqs"], 
+                            J=d["J"], 
+                            Omega_amp=d["Omega_amp"], 
+                            lam=d["lam"], 
+                            gamma_bath=d["gamma_bath"], 
+                            T=d["T"], 
+                            T_total=d["T_total"], 
+                            T_drive=d["T_drive"], 
+                            dt=d["dt"], 
+                            n_tls=d["n_tls"],
+                            n_freqs=d["n_freqs"])
     
     def __str__(self):
-        return self._name + "_" + super().__str__()
+        return super().__str__()
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -495,3 +562,104 @@ class Lindblad(Solver):
                 sp_mark[idx, :] = sp
             
             return (exc_mark, sp_mark)
+    
+class TieredSolver(Solver):
+    def __init__(self, 
+                 tls_freqs=None, 
+                 J=0.02, 
+                 Omega_amp=0.1, 
+                 lam=0.02, 
+                 gamma_bath=0.05, 
+                 T=0.5, 
+                 T_total=1600, 
+                 T_drive=100.0, 
+                 dt=0.5, 
+                 n_tls=2,
+                 n_freqs=30,
+                 omega_c=3.75,
+                 Nb=10):
+        
+        self.omega_c = omega_c
+        self.Nb = Nb
+        
+        super().__init__(tls_freqs=tls_freqs, 
+                        J=J, 
+                        Omega_amp=Omega_amp, 
+                        lam=lam, 
+                        gamma_bath=gamma_bath, 
+                        T=T, 
+                        T_total=T_total, 
+                        T_drive=T_drive, 
+                        dt=dt, 
+                        n_tls=n_tls,
+                        n_freqs=n_freqs,
+                        is_qutip_solver=True,
+                        name="Tiered")
+        
+         # build operators
+        self.build_operators()
+
+        # build static hamiltonian
+        self.build_hamiltonian()
+
+        # initial state
+        self.evals, self.evecs = self.H.eigenstates()
+        self.psi0 = self.evecs[0] 
+        self.rho0 = qt.ket2dm(self.psi0)
+        
+    def __getstate__(self):
+        d = super().__getstate__()
+        d["omega_c"] = self.omega_c
+        d["Nb"] = self.Nb
+        return d
+
+    def __setstate__(self, d):
+        return self.__init__(tls_freqs=d["tls_freqs"], 
+                            J=d["J"], 
+                            Omega_amp=d["Omega_amp"], 
+                            lam=d["lam"], 
+                            gamma_bath=d["gamma_bath"], 
+                            T=d["T"], 
+                            T_total=d["T_total"], 
+                            T_drive=d["T_drive"], 
+                            dt=d["dt"], 
+                            n_tls=d["n_tls"],
+                            n_freqs=d["n_freqs"],
+                            omega_c=d["omega_c"],
+                            Nb=d["Nb"])
+    
+    def __str__(self):
+        return super().__str__() + f"_mode_{self.omega_c}_Nb{self.Nb}"
+    
+    def _worker(self, omega_d):
+        H_full = qt.QobjEvo(
+        [self.H, [sum(self.sx), self.drive_coeff]],
+        args = {"omega": omega_d}
+        )
+
+        result = qt.mesolve(
+        H_full,
+        self.psi0,
+        self.tlist,
+        self.c_ops,
+        e_ops=[self.collective_exc, self.collective_sp],
+        options={"nsteps": 5000, "progress_bar": ''},
+    )
+
+        return np.real(result.expect[0]), result.expect[1]
+    
+    def run(self):
+        exc_mark = np.zeros((len(self.omega_d_vals), self.n_time))
+        sp_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
+
+        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+
+            for idx, (exc, sp) in enumerate(tqdm(executor.map(self._worker, self.omega_d_vals),
+                                                total=len(self.omega_d_vals),
+                                                desc="Markovian simulations")):
+                exc_mark[idx, :] = exc
+                sp_mark[idx, :] = sp
+            
+            return (exc_mark, sp_mark)
+        
+
