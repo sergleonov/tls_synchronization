@@ -18,11 +18,11 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 300
+    T_total = 1600
     T_drive = 100.0
     dt = 0.5
     n_tls = len(tls_freqs)
-    n_freqs = 100
+    n_freqs = 300
 
     sd_type = "power"
     ohmicity = 3
