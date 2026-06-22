@@ -6,7 +6,7 @@ from bctds_plots import *
 
 
 def main():
-    ap = argparse.ArgumentParser(description="TEMPO Simulation for single TLS")
+    ap = argparse.ArgumentParser(description="HEOM Simulation for single TLS")
     ap.add_argument("--tag", type=str, default="", help="Tag for output files")
     args = ap.parse_args()
 
@@ -83,7 +83,9 @@ def main():
             T_drive=T_drive, 
             dt=dt, 
             n_tls=n_tls,
-            n_freqs=n_freqs)
+            n_freqs=n_freqs, 
+            ohmicity=ohmicity,
+            sd_type=sd_type)
 
     print("Plotting results...")
     plot_exc_map(exc, heom.omega_d_vals, heom.tlist, labels=[mark._name, heom._name], filename=f"exc_map_{heom}_{args.tag}")
