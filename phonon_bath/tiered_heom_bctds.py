@@ -22,8 +22,30 @@ def main():
     n_tls = len(tls_freqs)
     n_freqs = 300
 
+    Nk = 3
+    max_depth = 5
+    gamma_bath = 0.05
+    ohmicity = None
+    sd_type = "drude"
+
     omega_c = np.mean(tls_freqs)
     Nb = 10
+
+    heom = HEOM(tls_freqs=tls_freqs, 
+                J=J, 
+                Omega_amp=Omega_amp, 
+                lam=g, 
+                gamma_bath=gamma_bath, 
+                T=T, 
+                Nk=Nk, 
+                max_depth=max_depth, 
+                T_total=T_total, 
+                T_drive=T_drive, 
+                dt=dt, 
+                n_tls=n_tls,
+                n_freqs=n_freqs,
+                sd_type=sd_type,
+                ohmicity=ohmicity)
 
     tier = TieredSolver(tls_freqs=tls_freqs, 
                         J=J, 
@@ -50,12 +72,14 @@ def main():
                     n_tls=n_tls,
                     n_freqs=n_freqs)
     
+    heom_exc, heom_sp = heom.run()
     tier_exc, tier_sp = tier.run()
     mark_exc, mark_sp = mark.run()
 
-    exc = [mark_exc, tier_exc]
-    sp  = [mark_sp, tier_sp]
+    exc = [mark_exc, tier_exc, heom_exc]
+    sp  = [mark_sp, tier_sp, heom_sp]
 
+    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, heom.omega_d_vals, heom.tlist, heom.dt, heom.n_time)
     fft_freqs_tier, fft_data_tier = compute_fft(tier_sp, tier.omega_d_vals, tier.tlist, tier.dt, tier.n_time)
     fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
 
@@ -63,7 +87,9 @@ def main():
     print("Saving data...")
     os.makedirs("bctds_data", exist_ok=True)
     np.savez(f"bctds_data/data_{tier}_{args.tag}.npz",
-            results_tier=(tier_exc, tier_sp), results_mark=(mark_exc, mark_sp),
+            results_heom=(heom_exc, heom_sp),
+            results_tier=(tier_exc, tier_sp), results_mark=(mark_exc, mark_sp), 
+            fft_freqs_heom=fft_freqs_heom, fft_data_heom=fft_data_heom,
             fft_freqs_tier=fft_freqs_tier, fft_data_tier=fft_data_tier,
             fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark,
             tls_freqs=tls_freqs, 
@@ -77,7 +103,12 @@ def main():
             n_tls=n_tls,
             n_freqs=n_freqs, 
             omega_c=omega_c,
-            Nb=Nb)
+            Nb=Nb,
+            gamma_bath=gamma_bath,
+            Nk=Nk,
+            max_depth=max_depth,
+            sd_type=sd_type,
+            ohmicity=ohmicity)
 
     print("Plotting results...")
     plot_exc_map(exc, tier.omega_d_vals, tier.tlist, labels=[mark._name, tier._name], filename=f"exc_map_{tier}_{args.tag}")
