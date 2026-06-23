@@ -116,7 +116,7 @@ def main():
     plot_exc_map(exc, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"exc_map_{tier}_{args.tag}")
     plot_sp_map(sp, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"sp_map_{tier}_{args.tag}")
     plot_diff_map(exc, sp, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"diff_map_{tier}_{args.tag}")
-    plot_fft_map([fft_freqs_mark, fft_freqs_tier], [fft_data_mark, fft_data_tier], tier.omega_d_vals, tier.omega_tls, labels=labels, filename=f"fft_map_{tier}_{args.tag}")
+    plot_fft_map([fft_freqs_mark, fft_freqs_tier, fft_freqs_heom], [fft_data_mark, fft_data_tier, fft_data_heom], tier.omega_d_vals, tier.omega_tls, labels=labels, filename=f"fft_map_{tier}_{args.tag}")
     plt.show()
     print("Done.")
 
