@@ -288,7 +288,7 @@ class HEOM(Solver):
         assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         sd = self.sd_type
         if sd == "power": sd += f"_{self.ohmicity}"
-        return super().__str__() + f"gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
+        return super().__str__() + f"_gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -433,7 +433,7 @@ class TEMPO(Solver):
                             epsrel=d["epsrel"])
     
     def __str__(self):
-        return super().__str__() + f"gamma_bath_{self.gamma_bath}_tcut{self.tcut}_zeta_{self.ohmicity}"
+        return super().__str__() + f"_gamma_bath_{self.gamma_bath}_tcut{self.tcut}_zeta_{self.ohmicity}"
     
     def _worker(self, omega_d, process_tensor):
         # total hamiltonian
