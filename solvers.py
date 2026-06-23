@@ -17,7 +17,6 @@ class Solver:
                  J=0.02, 
                  Omega_amp=0.1, 
                  lam=0.02, 
-                 gamma_bath=0.05, 
                  T=0.5, 
                  T_total=1600, 
                  T_drive=100.0, 
@@ -35,7 +34,6 @@ class Solver:
 
         # bath parameters
         self.lam = lam # coupling strength
-        self.gamma_bath = gamma_bath
         self.T = T # temperature
 
         # time parameters
@@ -64,7 +62,6 @@ class Solver:
             "J":self.J, 
             "Omega_amp":self.Omega_amp, 
             "lam":self.lam, 
-            "gamma_bath":self.gamma_bath, 
             "T":self.T, 
             "T_total":self.T_total, 
             "T_drive":self.T_drive, 
@@ -80,7 +77,6 @@ class Solver:
                     J=d["J"], 
                     Omega_amp=d["Omega_amp"], 
                     lam=d["lam"], 
-                    gamma_bath=d["gamma_bath"], 
                     T=d["T"], 
                     T_total=d["T_total"], 
                     T_drive=d["T_drive"], 
@@ -91,8 +87,8 @@ class Solver:
 
     def __str__(self):
         return(f"{self._name}_J_{self.J}_Omega_amp_{self.Omega_amp}_" + 
-            f"lam_{self.lam}_gamma_bath_{self.gamma_bath}_" + 
-            f"T_{self.T}_" + f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
+            f"lam_{self.lam}_T_{self.T}_" + 
+            f"T_total_{self.T_total}_dt_{self.dt}_N_TLS_{self.n_tls}") 
     
     def _tensor(self, mats: list):
         res = mats[0]
@@ -114,7 +110,9 @@ class Solver:
             self.c_ops.append(np.sqrt(self.lam * n_th[i]) * self.sp[i])
         if self._name == "Tiered": 
             self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
-            self.c_ops.append(self.a)
+            n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
+            self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * (self.a))
+            self.c_ops.append(np.sqrt(self.lam * (n_th_mode)) * (self.a.dag()))
 
     def build_operators(self):
         assert self._name in SOLVERS, "Error: Invalid solver name"
@@ -195,7 +193,7 @@ class Solver:
 
         if self._name == "Tiered":
             self.H += self.omega_c * self.a.dag() * self.a # cavity hamiltonian
-            self.H += self.lam * sum(self.sx) * self.a.dag() * self.a # system-bath hamiltonian
+            self.H += self.g * sum(self.sx) * self.a.dag() * self.a # system-bath hamiltonian
     
     def drive_coeff(self, t, args):
         if 0.0 <= t <= self.T_drive:
@@ -221,11 +219,12 @@ class HEOM(Solver):
                  sd_type="drude",
                  ohmicity=None):
         
+        self.gamma_bath = gamma_bath
+        
         super().__init__(tls_freqs=tls_freqs, 
                         J=J, 
                         Omega_amp=Omega_amp, 
                         lam=lam, 
-                        gamma_bath=gamma_bath, 
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
@@ -260,6 +259,7 @@ class HEOM(Solver):
 
     def __getstate__(self):
         d = super().__getstate__()
+        d["gamma_bath"]=self.gamma_bath, 
         d["Nk"] = self.Nk
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type
@@ -288,7 +288,7 @@ class HEOM(Solver):
         assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         sd = self.sd_type
         if sd == "power": sd += f"_{self.ohmicity}"
-        return super().__str__() + f"_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
+        return super().__str__() + f"gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -357,11 +357,12 @@ class TEMPO(Solver):
                  tcut=5.0,
                  epsrel=1e-4):
         
+        self.gamma_bath = gamma_bath
+        
         super().__init__(tls_freqs=tls_freqs, 
                         J=J, 
                         Omega_amp=Omega_amp, 
                         lam=lam, 
-                        gamma_bath=gamma_bath, 
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
@@ -391,11 +392,11 @@ class TEMPO(Solver):
 
         # define bath
         #TODO: changing bath type. will need to adjust pickling procedure
-        correlations = oqupy.PowerLawSD(alpha=lam,
+        correlations = oqupy.PowerLawSD(alpha=self.lam,
                                     zeta=self.ohmicity,
-                                    cutoff=gamma_bath,
+                                    cutoff=self.gamma_bath,
                                     cutoff_type=self.cutoff_type,
-                                    temperature=T)
+                                    temperature=self.T)
         self.bath = oqupy.Bath(sum(self.sx), correlations)
 
         self.tempo_params = oqupy.TempoParameters(dt=self.dt, tcut=self.tcut, epsrel=self.epsrel)
@@ -407,6 +408,7 @@ class TEMPO(Solver):
 
     def __getstate__(self):
         d = super().__getstate__()
+        d["gamma_bath"] = self.gamma_bath
         d["ohmicity"] = self.ohmicity
         d["cutoff_type"] = self.cutoff_type
         d["tcut"] = self.tcut
@@ -431,7 +433,7 @@ class TEMPO(Solver):
                             epsrel=d["epsrel"])
     
     def __str__(self):
-        return super().__str__() + f"_tcut{self.tcut}_zeta_{self.ohmicity}"
+        return super().__str__() + f"gamma_bath_{self.gamma_bath}_tcut{self.tcut}_zeta_{self.ohmicity}"
     
     def _worker(self, omega_d, process_tensor):
         # total hamiltonian
@@ -480,7 +482,6 @@ class Lindblad(Solver):
                  J=0.02, 
                  Omega_amp=0.1, 
                  lam=0.02, 
-                 gamma_bath=0.05, 
                  T=0.5, 
                  T_total=1600, 
                  T_drive=100.0, 
@@ -492,7 +493,6 @@ class Lindblad(Solver):
                         J=J, 
                         Omega_amp=Omega_amp, 
                         lam=lam, 
-                        gamma_bath=gamma_bath, 
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
@@ -521,7 +521,6 @@ class Lindblad(Solver):
                             J=d["J"], 
                             Omega_amp=d["Omega_amp"], 
                             lam=d["lam"], 
-                            gamma_bath=d["gamma_bath"], 
                             T=d["T"], 
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
@@ -568,8 +567,8 @@ class TieredSolver(Solver):
                  tls_freqs=None, 
                  J=0.02, 
                  Omega_amp=0.1, 
-                 lam=0.02, 
-                 gamma_bath=0.05, 
+                 lam=0.002, 
+                 g=0.02,
                  T=0.5, 
                  T_total=1600, 
                  T_drive=100.0, 
@@ -579,6 +578,7 @@ class TieredSolver(Solver):
                  omega_c=3.75,
                  Nb=10):
         
+        self.g = g
         self.omega_c = omega_c
         self.Nb = Nb
         
@@ -586,7 +586,6 @@ class TieredSolver(Solver):
                         J=J, 
                         Omega_amp=Omega_amp, 
                         lam=lam, 
-                        gamma_bath=gamma_bath, 
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
@@ -611,6 +610,7 @@ class TieredSolver(Solver):
         d = super().__getstate__()
         d["omega_c"] = self.omega_c
         d["Nb"] = self.Nb
+        d["g"] = self.g
         return d
 
     def __setstate__(self, d):
@@ -618,7 +618,7 @@ class TieredSolver(Solver):
                             J=d["J"], 
                             Omega_amp=d["Omega_amp"], 
                             lam=d["lam"], 
-                            gamma_bath=d["gamma_bath"], 
+                            g=d["g"],
                             T=d["T"], 
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
@@ -629,7 +629,7 @@ class TieredSolver(Solver):
                             Nb=d["Nb"])
     
     def __str__(self):
-        return super().__str__() + f"_mode_{self.omega_c}_Nb{self.Nb}"
+        return super().__str__() + f"_mode_{self.omega_c}_Nb{self.Nb}_g_{self.g}"
     
     def _worker(self, omega_d):
         H_full = qt.QobjEvo(
@@ -656,7 +656,7 @@ class TieredSolver(Solver):
 
             for idx, (exc, sp) in enumerate(tqdm(executor.map(self._worker, self.omega_d_vals),
                                                 total=len(self.omega_d_vals),
-                                                desc="Markovian simulations")):
+                                                desc="Tiered System simulations")):
                 exc_mark[idx, :] = exc
                 sp_mark[idx, :] = sp
             

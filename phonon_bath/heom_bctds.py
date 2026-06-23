@@ -47,7 +47,6 @@ def main():
                     J=J, 
                     Omega_amp=Omega_amp, 
                     lam=lam, 
-                    gamma_bath=gamma_bath, 
                     T=T, 
                     T_total=T_total, 
                     T_drive=T_drive, 

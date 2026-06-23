@@ -13,8 +13,8 @@ def main():
     tls_freqs = [3.75, 3.82]
     J = 0.02
     Omega_amp = 0.1
-    lam = 0.02
-    gamma_bath = 0.5
+    lam = 0.002
+    g = 0.02
     T = 0.5
     T_total = 400
     T_drive = 100.0
@@ -22,14 +22,14 @@ def main():
     n_tls = len(tls_freqs)
     n_freqs = 100
 
-    omega_c = 3.0
+    omega_c = 3.80
     Nb = 10
 
     tier = TieredSolver(tls_freqs=tls_freqs, 
                         J=J, 
                         Omega_amp=Omega_amp, 
                         lam=lam, 
-                        gamma_bath=gamma_bath, 
+                        g=g,
                         T=T, 
                         T_total=T_total, 
                         T_drive=T_drive, 
@@ -42,8 +42,7 @@ def main():
     mark = Lindblad(tls_freqs=tls_freqs, 
                     J=J, 
                     Omega_amp=Omega_amp, 
-                    lam=lam, 
-                    gamma_bath=gamma_bath, 
+                    lam=g, 
                     T=T, 
                     T_total=T_total, 
                     T_drive=T_drive, 
@@ -71,7 +70,6 @@ def main():
             J=J, 
             Omega_amp=Omega_amp, 
             lam=lam, 
-            gamma_bath=gamma_bath, 
             T=T, 
             T_total=T_total, 
             T_drive=T_drive, 
