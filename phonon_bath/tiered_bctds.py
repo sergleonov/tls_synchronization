@@ -64,7 +64,7 @@ def main():
     os.makedirs("bctds_data", exist_ok=True)
     np.savez(f"bctds_data/data_{tier}_{args.tag}.npz",
             results_tier=(tier_exc, tier_sp), results_mark=(mark_exc, mark_sp),
-            fft_freqs_tier=fft_freqs_tier, fft_data_tempo=fft_data_tier,
+            fft_freqs_tier=fft_freqs_tier, fft_data_tier=fft_data_tier,
             fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark,
             tls_freqs=tls_freqs, 
             J=J, 

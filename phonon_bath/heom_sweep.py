@@ -4,7 +4,6 @@ sys.path.append("../")
 from solvers import *
 from bctds_plots import *
 
-
 def main():
     ap = argparse.ArgumentParser(description="HEOM Simulation for single TLS")
     ap.add_argument("--tag", type=str, default="", help="Tag for output files")
@@ -65,7 +64,7 @@ def main():
         os.makedirs("bctds_data", exist_ok=True)
         np.savez(f"bctds_data/sweep_data_{heom}_{args.tag}.npz",
                 results_heom=(heom_exc, heom_sp),
-                fft_freqs_heom=fft_freqs_heom, fft_data_tempo=fft_data_heom,
+                fft_freqs_heom=fft_freqs_heom, fft_data_heom=fft_data_heom,
                 tls_freqs=tls_freqs, 
                 J=J, 
                 Omega_amp=Omega_amp, 

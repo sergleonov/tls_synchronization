@@ -27,7 +27,7 @@ def main():
             sp.append(results_heom[1])   # heom_sp
             
             fft_freqs.append(data['fft_freqs_heom'])
-            fft_data.append(data['fft_data_tempo'])
+            fft_data.append(data['fft_data_heom'])
 
             tls_freqs = data["tls_freqs"]
             J = data['J']
