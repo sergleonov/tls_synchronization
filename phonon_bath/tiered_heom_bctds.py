@@ -83,6 +83,8 @@ def main():
     fft_freqs_tier, fft_data_tier = compute_fft(tier_sp, tier.omega_d_vals, tier.tlist, tier.dt, tier.n_time)
     fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
 
+    labels = [mark._name, tier._name, heom._name]
+    
     # save results
     print("Saving data...")
     os.makedirs("bctds_data", exist_ok=True)
@@ -111,10 +113,10 @@ def main():
             ohmicity=ohmicity)
 
     print("Plotting results...")
-    plot_exc_map(exc, tier.omega_d_vals, tier.tlist, labels=[mark._name, tier._name], filename=f"exc_map_{tier}_{args.tag}")
-    plot_sp_map(sp, tier.omega_d_vals, tier.tlist, labels=[mark._name, tier._name], filename=f"sp_map_{tier}_{args.tag}")
-    plot_diff_map(exc, sp, tier.omega_d_vals, tier.tlist, labels=[mark._name, tier._name], filename=f"diff_map_{tier}_{args.tag}")
-    plot_fft_map([fft_freqs_mark, fft_freqs_tier], [fft_data_mark, fft_data_tier], tier.omega_d_vals, tier.omega_tls, labels=[mark._name, tier._name], filename=f"fft_map_{tier}_{args.tag}")
+    plot_exc_map(exc, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"exc_map_{tier}_{args.tag}")
+    plot_sp_map(sp, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"sp_map_{tier}_{args.tag}")
+    plot_diff_map(exc, sp, tier.omega_d_vals, tier.tlist, labels=labels, filename=f"diff_map_{tier}_{args.tag}")
+    plot_fft_map([fft_freqs_mark, fft_freqs_tier], [fft_data_mark, fft_data_tier], tier.omega_d_vals, tier.omega_tls, labels=labels, filename=f"fft_map_{tier}_{args.tag}")
     plt.show()
     print("Done.")
 
