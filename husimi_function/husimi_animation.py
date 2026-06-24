@@ -12,7 +12,7 @@ def main():
     tls_freqs = [3.75, 3.82]
     J = 0.02
     Omega_amp = 0.1
-    lam = 0.005
+    lam = 0.002
     g = 0.02
     gamma_bath = 0.05
     T = 0.5
@@ -27,8 +27,8 @@ def main():
     omega_c = np.mean(tls_freqs)
     Nb = 10
 
-    sd_type = "power"
-    ohmicity = 3
+    sd_type = "drude"
+    ohmicity = None
 
     heom = HEOM(tls_freqs=tls_freqs, 
                 J=J, 
@@ -85,7 +85,11 @@ def main():
         Qts.append(solver.husimi_sim(omega_d, theta, phi, method=method, tls_idx=tls_idx))
         labels.append(solver._name)
 
-    generate_husimi_anim(Qts=Qts, tlist=heom.tlist, theta=theta, phi=phi, T_drive=heom.T_drive, labels=labels, filename="husimi_evolution")
+    sd = ""
+    if sd_type == "power":
+        sd = sd_type + f"_ohm{ohmicity}"
+    filename = f"sim_J{J}_Om{Omega_amp}_omega_c{omega_c}_cutoff{gamma_bath}_g{g}_{sd}_lam{lam}_dt{dt}_Nb{Nb}_Nk{Nk}_depth{max_depth}_T{T_total}"
+    generate_husimi_anim(Qts=Qts, tlist=heom.tlist, theta=theta, phi=phi, T_drive=heom.T_drive, labels=labels, filename=filename)
 
 if __name__ == "__main__":
     status = main()

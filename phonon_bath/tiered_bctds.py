@@ -16,7 +16,7 @@ def main():
     tls_freqs = [3.75, 3.82]
     J = 0.02
     Omega_amp = 0.1
-    lam = 0.005
+    lam = 0.002
     g = 0.02
     T = 0.5
     T_total = 1600
