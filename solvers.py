@@ -10,6 +10,7 @@ from functools import partial
 
 SOLVERS = ["Markovian", "Tiered", "HEOM", "TEMPO"]
 SD_TYPES = ["power", "drude"]
+HUSIMI_EVAL_METHODS = ["avg", "ptrace"]
 
 class Solver:
     def __init__(self,
@@ -200,6 +201,36 @@ class Solver:
             return 0.5 * self.Omega_amp * np.cos(args["omega"] * t)
         else:
             return 0.0
+        
+    def eval_husimi(self, rho, theta, phi, tls_idx=None, method="avg"):
+        assert method in HUSIMI_EVAL_METHODS, "Error: Invalid husimi evaluation method"
+
+        if self.is_qutip_solver:
+            if rho.isket:
+                rho = qt.ket2dm(rho)
+            
+            j = 1/2 # spin of TLS
+            prefactor = (2 * j + 1) / (4 * np.pi) # husimi prefactor
+            match method:
+                case "ptrace":
+                    if tls_idx is None:
+                        raise ValueError("Error: Index for the partial trace is None")
+                    rho_partial = qt.ptrace(rho, tls_idx)
+                    Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
+                    return prefactor * np.transpose(Q)
+                case "avg":
+                    Qs = []
+                    for i in range(self.n_tls):
+                        rho_partial = qt.ptrace(rho, i)
+                        Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
+                        Qs.append(Q)
+                    Q_res = np.mean(Qs, axis=0)
+                    return prefactor * np.transpose(Q_res)
+        else:
+            # TODO: implement TEMPO Husimi computation
+            raise NotImplementedError("Unsupported computation for TEMPO")
+        
+# --------------------- HEOM --------------------
 
 class HEOM(Solver):
     def __init__(self, 
@@ -219,6 +250,8 @@ class HEOM(Solver):
                  sd_type="drude",
                  ohmicity=None):
         
+        assert sd_type in SD_TYPES, "Error: Invalid spectral density"
+
         self.gamma_bath = gamma_bath
         
         super().__init__(tls_freqs=tls_freqs, 
@@ -233,8 +266,6 @@ class HEOM(Solver):
                         n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="HEOM")
-        
-        assert sd_type in SD_TYPES, "Error: Invalid spectral density"
 
         # number of expansion terms
         self.Nk = Nk
@@ -290,7 +321,7 @@ class HEOM(Solver):
         if sd == "power": sd += f"_{self.ohmicity}"
         return super().__str__() + f"_gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
-    def _worker(self, omega_d):
+    def _worker(self, omega_d, store_states=False):
         H_full = qt.QobjEvo(
         [self.H, [sum(self.sx), self.drive_coeff]],
         args = {"omega": omega_d}
@@ -301,7 +332,7 @@ class HEOM(Solver):
             H_full,
             (_heom_bath, sum(self.sx)),
             max_depth=self.max_depth,
-            options={"nsteps": 5000, "progress_bar": ''},
+            options={"nsteps": 5000, "progress_bar": '', "store_states": store_states},
         )
 
         result = solver.run(
@@ -310,10 +341,11 @@ class HEOM(Solver):
             e_ops=[self.collective_exc, self.collective_sp]
         )
 
+        if store_states:
+            return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
-    def run(self):
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
+    def _build_bath(self):
         # bath
         global _heom_bath
         match self.sd_type:
@@ -325,6 +357,11 @@ class HEOM(Solver):
                 _heom_bath, info = env.approximate(method="cf", tlist=self.tlist, target_rmse=None, Nr_max=self.Nk, Ni_max=self.Nk, maxfev=1e8)
             case _: 
                 raise ValueError("Invalid spectral density type.")
+    
+    def run(self):
+        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
+        # bath
+        self._build_bath()
 
         exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
@@ -338,6 +375,29 @@ class HEOM(Solver):
                 sp_heom[idx, :] = sp
             
             return (exc_heom, sp_heom)
+    
+    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
+        self._build_bath()
+
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        Qt = np.zeros((self.n_time, len(theta), len(phi)))
+
+        eval_husimi_partial = partial(self.eval_husimi,
+                                      theta=theta,
+                                      phi=phi,
+                                      method=method,
+                                      tls_idx=tls_idx)
+
+        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        
+            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
+                                            total=len(states), 
+                                            desc="HEOM Husimi-Q Computation")):
+                Qt[t_idx] = Q
+        
+        return Qt
+    
+# --------------------- TEMPO --------------------
 
 class TEMPO(Solver):
     def __init__(self, 
@@ -453,7 +513,7 @@ class TEMPO(Solver):
         t, exc_tempo = dynamics.expectations(self.collective_exc, real=True)
         t, sp_tempo  = dynamics.expectations(self.collective_sp, real=False)
 
-        return exc_tempo, sp_tempo
+        return exc_tempo, sp_tempo, dynamics.states
     
     def run(self):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
@@ -475,7 +535,33 @@ class TEMPO(Solver):
                 exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
 
             return (exc_tempo, sp_tempo)
+    
+    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
+        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
+                                            start_time=0.0,
+                                            end_time=self.T_total,
+                                            parameters=self.tempo_params)
+
+        exc, sp, states = self._worker(omega_d, process_tensor)
+        Qt = np.zeros((self.n_time, len(theta), len(phi)))
+
+        eval_husimi_partial = partial(self.eval_husimi,
+                                      theta=theta,
+                                      phi=phi,
+                                      method=method,
+                                      tls_idx=tls_idx)
+
+        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
         
+            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
+                                            total=len(states), 
+                                            desc="TEMPO Husimi-Q Computation")):
+                Qt[t_idx] = Q
+        
+        return Qt
+    
+# --------------------- Markovian --------------------
+
 class Lindblad(Solver):
     def __init__(self, 
                  tls_freqs=None, 
@@ -531,7 +617,7 @@ class Lindblad(Solver):
     def __str__(self):
         return super().__str__()
     
-    def _worker(self, omega_d):
+    def _worker(self, omega_d, store_states=False):
         H_full = qt.QobjEvo(
         [self.H, [sum(self.sx), self.drive_coeff]],
         args = {"omega": omega_d}
@@ -543,9 +629,11 @@ class Lindblad(Solver):
         self.tlist,
         self.c_ops,
         e_ops=[self.collective_exc, self.collective_sp],
-        options={"nsteps": 5000, "progress_bar": ''},
-    )
-
+        options={"nsteps": 5000, "progress_bar": '', "store_states": store_states},
+        )
+        
+        if store_states:
+            return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
@@ -561,6 +649,27 @@ class Lindblad(Solver):
                 sp_mark[idx, :] = sp
             
             return (exc_mark, sp_mark)
+        
+    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        Qt = np.zeros((self.n_time, len(theta), len(phi)))
+
+        eval_husimi_partial = partial(self.eval_husimi,
+                                      theta=theta,
+                                      phi=phi,
+                                      method=method,
+                                      tls_idx=tls_idx)
+
+        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        
+            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
+                                            total=len(states), 
+                                            desc="Lindblad Husimi-Q Computation")):
+                Qt[t_idx] = Q
+        
+        return Qt
+
+# --------------------- Tiered --------------------
     
 class TieredSolver(Solver):
     def __init__(self, 
@@ -631,7 +740,7 @@ class TieredSolver(Solver):
     def __str__(self):
         return super().__str__() + f"_mode_{self.omega_c}_Nb{self.Nb}_g_{self.g}"
     
-    def _worker(self, omega_d):
+    def _worker(self, omega_d, store_states=False):
         H_full = qt.QobjEvo(
         [self.H, [sum(self.sx), self.drive_coeff]],
         args = {"omega": omega_d}
@@ -643,9 +752,11 @@ class TieredSolver(Solver):
         self.tlist,
         self.c_ops,
         e_ops=[self.collective_exc, self.collective_sp],
-        options={"nsteps": 5000, "progress_bar": ''},
-    )
+        options={"nsteps": 5000, "progress_bar": '', "store_states": store_states},
+        )
 
+        if store_states:
+            return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
     def run(self):
@@ -661,5 +772,24 @@ class TieredSolver(Solver):
                 sp_mark[idx, :] = sp
             
             return (exc_mark, sp_mark)
+    
+    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        Qt = np.zeros((self.n_time, len(theta), len(phi)))
+
+        eval_husimi_partial = partial(self.eval_husimi,
+                                      theta=theta,
+                                      phi=phi,
+                                      method=method,
+                                      tls_idx=tls_idx)
+
+        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        
+            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
+                                            total=len(states), 
+                                            desc="Tiered Husimi-Q Computation")):
+                Qt[t_idx] = Q
+        
+        return Qt
         
 

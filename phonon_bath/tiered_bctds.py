@@ -1,8 +1,11 @@
 import sys
+import os
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 sys.path.append("../")
-from solvers import *
-from bctds_plots import *
+from solvers import TieredSolver, Lindblad
+from bctds_plots import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
 
 
 def main():
@@ -13,7 +16,7 @@ def main():
     tls_freqs = [3.75, 3.82]
     J = 0.02
     Omega_amp = 0.1
-    lam = 0.002
+    lam = 0.005
     g = 0.02
     T = 0.5
     T_total = 1600

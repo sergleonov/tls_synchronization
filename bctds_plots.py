@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as anim
 from scipy.signal import windows
 import os
 
@@ -227,3 +228,81 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         os.makedirs("bctds_figures",exist_ok=True)
         plt.savefig(f"bctds_figures/{filename}.png")
 
+def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, filename="husimi_animation"):
+    for i in range(len(Qts)):
+        assert len(Qts[i]) == len(tlist)
+        assert np.shape(Qts[i][0]) == (len(theta), len(phi))
+
+    print("Generating Husimi animaton...")
+    n_plots = len(Qts)
+    # check shape
+    for i in range(n_plots):
+        assert len(Qts[0]) == len(Qts[i])
+    
+    gridspec = {'width_ratios': [1] * n_plots + [0.1]} 
+    fig, ax = plt.subplots(1, n_plots + 1, figsize=(6 * n_plots, 4), gridspec_kw=gridspec)
+
+    vmax = find_max(Qts)
+    vmin = find_min(Qts)
+    t_idx = 0
+
+    # add labels
+    ax[0].set_ylabel(r"$\theta$")
+    # add data
+    images = []
+    
+    for i in range(len(Qts)):
+        ax[i].set_title(labels[i])
+        ax[i].set_xlabel(r"$\phi$")
+        ax[i].set_aspect('auto')
+
+        images.append(
+            ax[i].imshow(
+                Qts[i][t_idx],
+                origin='lower',
+                extent=[phi[0], phi[-1], theta[0], theta[-1]],
+                cmap='inferno',
+                vmin=vmin, vmax=vmax
+            )
+        )
+
+    # colorbar
+    cb1 = fig.colorbar(images[-1], cax=ax[n_plots])
+    cb1.set_label(r"$Q(\theta,\phi)$")
+    plt.tight_layout()
+
+    def update(frame):
+        t_idx = frame
+
+        for i in range(len(Qts)):
+            # clear frame
+            ax[i].clear()
+            if i == 0:
+                ax[i].set_ylabel(r"$\theta$")
+            ax[i].set_title(labels[i])
+            ax[i].set_xlabel(r"$\phi$")
+
+            ax[i].imshow(
+                Qts[i][t_idx],
+                origin='lower',
+                extent=[phi[0], phi[-1], theta[0], theta[-1]],
+                cmap='inferno',
+                vmin=vmin, vmax=vmax
+            )
+
+        # label time of the frame
+        t_now = tlist[t_idx]
+
+        if t_now <= T_drive:
+            phase = "DRIVE ON"
+            color = 'green'
+        else:
+            phase = "DRIVE OFF"
+            color = 'red'
+
+        fig.suptitle(f"t = {t_now:.1f} ns | {phase}", color=color)
+
+    ani = anim.FuncAnimation(fig=fig, func=update, frames=len(tlist), interval=30)
+    os.makedirs("husimi_animation",exist_ok=True)
+    ani.save(f"husimi_animation/{filename}.mp4", writer='ffmpeg', fps=10)
+    print("Animation saved.")
