@@ -240,6 +240,24 @@ class Solver:
             # TODO: implement TEMPO Husimi computation
             raise NotImplementedError("Unsupported computation for TEMPO")
         
+    def pearson_evolution(self, x, y, window_size, overlap=1):
+        step = window_size - overlap
+        assert step > 0
+        n_steps = self.n_time // step + 1
+        C_t = np.zeros(self.n_time)
+
+        C = None
+        for i in range(n_steps):
+            start = step * i
+            end = start + window_size
+            if end > self.n_time:
+                C = np.corrcoef(x[start:-1], y[start:-1])[1, 0]
+                C_t[start:-1] = C
+                break
+            C = np.corrcoef(x[start:end], y[start:end])[1, 0]
+            C_t[start:end] = C
+        return C_t
+        
 # --------------------- HEOM --------------------
 
 class HEOM(Solver):
@@ -422,7 +440,26 @@ class HEOM(Solver):
         
         return phases, self.tlist
         
-    
+    def correlation_sim(self, omega_d):
+        self._build_bath()
+
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        correlations = {}
+        exp_xs = [] # expectations in x
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i]]
+            exp_x = qt.expect(e_ops, states)
+
+            exp_xs.append(exp_x)
+        
+        for i in range(0, len(exp_xs)):
+            for j in range(i+1, len(exp_xs)):
+                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+
+        return correlations, self.tlist
+
 # --------------------- TEMPO --------------------
 
 class TEMPO(Solver):
@@ -604,6 +641,28 @@ class TEMPO(Solver):
         
         return phases, self.tlist
     
+    def correlation_sim(self, omega_d):
+        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
+                                            start_time=0.0,
+                                            end_time=self.T_total,
+                                            parameters=self.tempo_params)
+
+        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+
+        correlations = {}
+        exp_xs = [] # expectations in x
+
+        for i in range(self.n_tls):
+            t, exp_x = dynamics.expectations(self.sx[i], real=True)
+
+            exp_xs.append(exp_x)
+        
+        for i in range(0, len(exp_xs)):
+            for j in range(i+1, len(exp_xs)):
+                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+
+        return correlations, self.tlist
+    
 # --------------------- Markovian --------------------
 
 class Lindblad(Solver):
@@ -725,6 +784,24 @@ class Lindblad(Solver):
             phases.append(np.arctan2(exp_y, exp_x))
         
         return phases, self.tlist
+    
+    def correlation_sim(self, omega_d):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        correlations = {}
+        exp_xs = [] # expectations in x
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i]]
+            exp_x = qt.expect(e_ops, states)
+
+            exp_xs.append(exp_x)
+        
+        for i in range(0, len(exp_xs)):
+            for j in range(i+1, len(exp_xs)):
+                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+
+        return correlations, self.tlist
 
 # --------------------- Tiered --------------------
     
@@ -861,4 +938,22 @@ class TieredSolver(Solver):
             phases.append(np.arctan2(exp_y, exp_x))
         
         return phases, self.tlist
+    
+    def correlation_sim(self, omega_d):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        correlations = {}
+        exp_xs = [] # expectations in x
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i]]
+            exp_x = qt.expect(e_ops, states)
+
+            exp_xs.append(exp_x)
+        
+        for i in range(0, len(exp_xs)):
+            for j in range(i+1, len(exp_xs)):
+                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+
+        return correlations, self.tlist
 

@@ -47,7 +47,7 @@ def compute_fft(sp_t, omega_d_vals, tlist, dt, n_time, fmax=0.1):
     fft_data = fft_data[:, :idx_max]
     fft_freqs = fft_freqs[:idx_max]
 
-    return fft_freqs, fft_data
+    return fft_freqs, fft_data  
 
 # ------------- Plots -------------
 def find_max(mats):
@@ -334,3 +334,21 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, filename="phase_
 
     os.makedirs("phase_plots", exist_ok=True)
     plt.savefig(f"phase_plots/{filename}.png")
+
+def plot_correlations(correlations, tlist, tls_freqs, solver_name, filename="correlations_plot"):
+    fig, ax = plt.subplots(1, 1, figsize=(6,6))
+
+    lgd_strs = []
+    for cor, C_t in correlations.items():
+        assert len(C_t) == len(tlist)
+        ax.plot(tlist, C_t)
+        lgd_strs.append(f"C_{cor}")
+    
+    ax.set_xlabel("Time [us]")
+    ax.set_ylabel("Correlation")
+    ax.set_title("Pearson Correlation Over Time")
+    plt.tight_layout()
+
+    os.makedirs("correlation_plots", exist_ok=True)
+    plt.savefig(f"correlation_plots/{filename}.png")
+
