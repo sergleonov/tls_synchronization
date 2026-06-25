@@ -119,6 +119,7 @@ class Solver:
         assert self._name in SOLVERS, "Error: Invalid solver name"
 
         sx_tls = []
+        sy_tls = []
         sz_tls = []
         sm_tls = []
         sp_tls = []
@@ -127,6 +128,9 @@ class Solver:
             op_list = [qt.qeye(2) if self.is_qutip_solver else np.eye(2) for _ in range(self.n_tls)]
             op_list[i] = qt.sigmax() if self.is_qutip_solver else oqupy.operators.sigma("x")
             sx_tls.append(self._tensor(op_list))
+
+            op_list[i] = qt.sigmay() if self.is_qutip_solver else oqupy.operators.sigma("y")
+            sy_tls.append(self._tensor(op_list))
             
             op_list[i] = qt.sigmaz() if self.is_qutip_solver else oqupy.operators.sigma("z")
             sz_tls.append(self._tensor(op_list))
@@ -140,6 +144,7 @@ class Solver:
         match self._name:
             case "Markovian":
                 self.sx = sx_tls
+                self.sy = sy_tls
                 self.sz = sz_tls
                 self.sp = sp_tls
                 self.sm = sm_tls
@@ -148,6 +153,7 @@ class Solver:
 
             case "Tiered":
                 self.sx = []
+                self.sy = []
                 self.sz = []
                 self.sp = []
                 self.sm = []
@@ -155,6 +161,9 @@ class Solver:
                 for i in range(self.n_tls):
                     op_list = [sx_tls[i], I_cav]
                     self.sx.append(self._tensor(op_list))
+
+                    op_list = [sy_tls[i], I_cav]
+                    self.sy.append(self._tensor(op_list))
 
                     op_list = [sz_tls[i], I_cav]
                     self.sz.append(self._tensor(op_list))
@@ -169,6 +178,7 @@ class Solver:
         
             case _:
                 self.sx = sx_tls
+                self.sy = sy_tls
                 self.sz = sz_tls
                 self.sp = sp_tls
                 self.sm = sm_tls
@@ -396,6 +406,22 @@ class HEOM(Solver):
                 Qt[t_idx] = Q
         
         return Qt
+
+    def phase_sim(self, omega_d):
+        self._build_bath()
+
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        
+        phases = []
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i], self.sy[i]]
+            exp_x, exp_y = qt.expect(e_ops, states)
+
+            phases.append(np.arctan2(exp_y, exp_x))
+        
+        return phases, self.tlist
+        
     
 # --------------------- TEMPO --------------------
 
@@ -513,7 +539,7 @@ class TEMPO(Solver):
         t, exc_tempo = dynamics.expectations(self.collective_exc, real=True)
         t, sp_tempo  = dynamics.expectations(self.collective_sp, real=False)
 
-        return exc_tempo, sp_tempo, dynamics.states
+        return exc_tempo, sp_tempo, dynamics
     
     def run(self):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
@@ -542,7 +568,7 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, states = self._worker(omega_d, process_tensor)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor)
         Qt = np.zeros((self.n_time, len(theta), len(phi)))
 
         eval_husimi_partial = partial(self.eval_husimi,
@@ -553,12 +579,30 @@ class TEMPO(Solver):
 
         with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
         
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
-                                            total=len(states), 
+            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, dynamics.states), 
+                                            total=len(dynamics.states), 
                                             desc="TEMPO Husimi-Q Computation")):
                 Qt[t_idx] = Q
         
         return Qt
+    
+    def phase_sim(self, omega_d):
+        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
+                                            start_time=0.0,
+                                            end_time=self.T_total,
+                                            parameters=self.tempo_params)
+
+        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+        
+        phases = []
+
+        for i in range(self.n_tls):
+            t, exp_x = dynamics.expectations(self.sx[i], real=True)
+            t, exp_y = dynamics.expectations(self.sy[i], real=True)
+
+            phases.append(np.arctan2(exp_y, exp_x))
+        
+        return phases, self.tlist
     
 # --------------------- Markovian --------------------
 
@@ -668,6 +712,19 @@ class Lindblad(Solver):
                 Qt[t_idx] = Q
         
         return Qt
+    
+    def phase_sim(self, omega_d):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        
+        phases = []
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i], self.sy[i]]
+            exp_x, exp_y = qt.expect(e_ops, states)
+
+            phases.append(np.arctan2(exp_y, exp_x))
+        
+        return phases, self.tlist
 
 # --------------------- Tiered --------------------
     
@@ -792,4 +849,16 @@ class TieredSolver(Solver):
         
         return Qt
         
+    def phase_sim(self, omega_d):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+        
+        phases = []
+
+        for i in range(self.n_tls):
+            e_ops = [self.sx[i], self.sy[i]]
+            exp_x, exp_y = qt.expect(e_ops, states)
+
+            phases.append(np.arctan2(exp_y, exp_x))
+        
+        return phases, self.tlist
 

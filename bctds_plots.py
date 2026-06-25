@@ -306,3 +306,31 @@ def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, filename="husi
     os.makedirs("husimi_animation",exist_ok=True)
     ani.save(f"husimi_animation/{filename}.mp4", writer='ffmpeg', fps=10)
     print("Animation saved.")
+
+def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, filename="phase_plot"):
+    fig, ax = plt.subplots(1, 2, figsize=(6*2,6))
+
+    for i in range(len(phases)):
+        ax[0].plot(tlist, phases[i])
+
+    ax[0].legend([f"TLS {tls_freqs[i]}" for i in range(len(phases))])
+    ax[0].set_xlabel("Time [us]")
+    ax[0].set_ylabel("Phase (rad.)")
+    ax[0].set_title("Phase Time Evolution")
+
+    # plot differences
+    leg_strs = []
+    for i in range(len(phases)):
+        for j in range(i+1, len(phases)):
+            ax[1].plot(tlist, phases[i] - phases[j])
+            leg_strs.append(f"TLS {tls_freqs[i]} - TLS {tls_freqs[j]}")
+
+    ax[1].set_xlabel("Time [us]")
+    ax[1].set_ylabel("Phase (rad.)")
+    ax[1].set_title("Phase Differences Over Time")
+    ax[1].legend(leg_strs)
+    fig.suptitle(f"{solver_name} Phase Time Evolution")
+    plt.tight_layout()
+
+    os.makedirs("phase_plots", exist_ok=True)
+    plt.savefig(f"phase_plots/{filename}.png")
