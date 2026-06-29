@@ -335,18 +335,19 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, filename="phase_
     os.makedirs("phase_plots", exist_ok=True)
     plt.savefig(f"phase_plots/{filename}.png")
 
-def plot_correlations(correlations, tlist, tls_freqs, solver_name, filename="correlations_plot"):
+def plot_correlations(correlations, tlist, solver_name, filename="correlations_plot"):
     fig, ax = plt.subplots(1, 1, figsize=(6,6))
 
     lgd_strs = []
     for cor, C_t in correlations.items():
         assert len(C_t) == len(tlist)
         ax.plot(tlist, C_t)
-        lgd_strs.append(f"C_{cor}")
+        lgd_strs.append(f"{cor}")
     
     ax.set_xlabel("Time [us]")
     ax.set_ylabel("Correlation")
-    ax.set_title("Pearson Correlation Over Time")
+    ax.set_title(f"Pearson Correlation Over Time ({solver_name})")
+    ax.legend(lgd_strs)
     plt.tight_layout()
 
     os.makedirs("correlation_plots", exist_ok=True)

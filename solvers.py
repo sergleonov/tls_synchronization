@@ -440,7 +440,7 @@ class HEOM(Solver):
         
         return phases, self.tlist
         
-    def correlation_sim(self, omega_d):
+    def correlation_sim(self, omega_d, window_size, overlap):
         self._build_bath()
 
         exc, sp, states = self._worker(omega_d, store_states=True)
@@ -449,14 +449,14 @@ class HEOM(Solver):
         exp_xs = [] # expectations in x
 
         for i in range(self.n_tls):
-            e_ops = [self.sx[i]]
+            e_ops = self.sx[i]
             exp_x = qt.expect(e_ops, states)
 
             exp_xs.append(exp_x)
         
         for i in range(0, len(exp_xs)):
             for j in range(i+1, len(exp_xs)):
-                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
 
         return correlations, self.tlist
 
@@ -641,7 +641,7 @@ class TEMPO(Solver):
         
         return phases, self.tlist
     
-    def correlation_sim(self, omega_d):
+    def correlation_sim(self, omega_d, window_size, overlap):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
@@ -659,7 +659,7 @@ class TEMPO(Solver):
         
         for i in range(0, len(exp_xs)):
             for j in range(i+1, len(exp_xs)):
-                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
 
         return correlations, self.tlist
     
@@ -785,21 +785,21 @@ class Lindblad(Solver):
         
         return phases, self.tlist
     
-    def correlation_sim(self, omega_d):
+    def correlation_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         correlations = {}
         exp_xs = [] # expectations in x
 
         for i in range(self.n_tls):
-            e_ops = [self.sx[i]]
+            e_ops = self.sx[i]
             exp_x = qt.expect(e_ops, states)
 
             exp_xs.append(exp_x)
         
         for i in range(0, len(exp_xs)):
             for j in range(i+1, len(exp_xs)):
-                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
 
         return correlations, self.tlist
 
@@ -939,21 +939,21 @@ class TieredSolver(Solver):
         
         return phases, self.tlist
     
-    def correlation_sim(self, omega_d):
+    def correlation_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         correlations = {}
         exp_xs = [] # expectations in x
 
         for i in range(self.n_tls):
-            e_ops = [self.sx[i]]
+            e_ops = self.sx[i]
             exp_x = qt.expect(e_ops, states)
 
             exp_xs.append(exp_x)
         
         for i in range(0, len(exp_xs)):
             for j in range(i+1, len(exp_xs)):
-                correlations[f"{i+1}{j+1}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=9, overlap=6)
+                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
 
         return correlations, self.tlist
 

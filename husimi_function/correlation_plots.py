@@ -97,14 +97,16 @@ def main():
                 tcut=tcut,
                 epsrel=epsrel)
     
+    window_size = 9
+    overlap = 6
     omega_d = tls_freqs[0]
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    solvers = [mark]
+    solvers = [mark, heom, tempo, tier]
     for solver in solvers:
-        correlations, t = solver.correlation_sim(omega_d)
-        plot_correlations(correlations, t, solver.omega_tls, solver._name, filename=f"phase_drive_{omega_d}_{solver}")
+        correlations, t = solver.correlation_sim(omega_d, window_size, overlap)
+        plot_correlations(correlations, t, solver._name, filename=f"phase_drive_{omega_d}_{solver}")
     
     print("Showing plots...")
     plt.show()
