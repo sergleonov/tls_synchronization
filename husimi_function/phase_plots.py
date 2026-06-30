@@ -84,7 +84,7 @@ def main():
     tempo = TEMPO(tls_freqs=tls_freqs, 
                 J=J, 
                 Omega_amp=Omega_amp, 
-                lam=lam, 
+                lam=g, 
                 gamma_bath=gamma_bath, 
                 T=T, 
                 T_total=T_total, 

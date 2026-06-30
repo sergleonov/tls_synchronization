@@ -307,7 +307,7 @@ def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, filename="husi
     ani.save(f"husimi_animation/{filename}.mp4", writer='ffmpeg', fps=10)
     print("Animation saved.")
 
-def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, filename="phase_plot"):
+def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filename="phase_plot"):
     fig, ax = plt.subplots(1, 2, figsize=(6*2,6))
 
     for i in range(len(phases)):
@@ -332,10 +332,11 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, filename="phase_
     fig.suptitle(f"{solver_name} Phase Time Evolution")
     plt.tight_layout()
 
-    os.makedirs("phase_plots", exist_ok=True)
-    plt.savefig(f"phase_plots/{filename}.png")
+    if save:
+        os.makedirs("phase_plots", exist_ok=True)
+        plt.savefig(f"phase_plots/{filename}.png")
 
-def plot_correlations(correlations, tlist, solver_name, filename="correlations_plot"):
+def plot_correlations(correlations, tlist, solver_name, save=True, filename="correlations_plot"):
     fig, ax = plt.subplots(1, 1, figsize=(6,6))
 
     lgd_strs = []
@@ -350,6 +351,35 @@ def plot_correlations(correlations, tlist, solver_name, filename="correlations_p
     ax.legend(lgd_strs)
     plt.tight_layout()
 
-    os.makedirs("correlation_plots", exist_ok=True)
-    plt.savefig(f"correlation_plots/{filename}.png")
+    if save:
+        os.makedirs("correlation_plots", exist_ok=True)
+        plt.savefig(f"correlation_plots/{filename}.png")
 
+def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
+    gridspec = {'width_ratios': [1, 0.1]} 
+    fig, ax = plt.subplots(1, 2, figsize=(6, 8), gridspec_kw=gridspec)
+
+    assert len(corr_map) == len(J_list)
+    assert len(corr_map[0]) == len(freq_ratios)
+
+    im = ax[0].imshow(corr_map,
+                    extent=[freq_ratios[0], freq_ratios[-1],
+                            J_list[0], J_list[-1]],
+                    origin='lower', aspect='auto', cmap='inferno',
+                    vmin=-1,
+                    vmax=1)
+    
+    ax[0].set_title(f"Correlation Sweep ({solver_name})")
+    ax[0].set_xlabel(r"$ \omega_2 / \omega_1$")
+    ax[0].set_ylabel("J")
+    
+    # colorbar
+    cb1 = fig.colorbar(im, cax=ax[1])
+    cb1.set_label(r"$ C_{12} $", labelpad=14)
+    plt.tight_layout()
+
+    # save
+    if save:
+        os.makedirs("correlation_plots",exist_ok=True)
+        plt.savefig(f"correlation_plots/{filename}.png")
+    
