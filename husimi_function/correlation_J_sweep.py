@@ -19,7 +19,6 @@ def main():
     T_total = 100
     T_drive = 10.0
     dt = 0.5
-    n_tls = len(tls_freqs)
     n_freqs = 300
 
     # Tiered params
@@ -49,7 +48,6 @@ def main():
                 T_total=T_total, 
                 T_drive=T_drive, 
                 dt=dt, 
-                n_tls=n_tls,
                 n_freqs=n_freqs,
                 sd_type=sd_type,
                 ohmicity=ohmicity)
@@ -62,7 +60,6 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
-                    n_tls=n_tls,
                     n_freqs=n_freqs)
 
     tier = TieredSolver(tls_freqs=tls_freqs, 
@@ -74,7 +71,6 @@ def main():
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
-                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
@@ -88,7 +84,6 @@ def main():
                 T_total=T_total, 
                 T_drive=T_drive, 
                 dt=dt, 
-                n_tls=n_tls,
                 n_freqs=n_freqs,
                 zeta=zeta,
                 cutoff_type=cutoff_type,
@@ -122,7 +117,6 @@ def main():
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
-                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
