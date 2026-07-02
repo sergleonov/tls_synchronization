@@ -204,7 +204,7 @@ class Solver:
 
         if self._name == "Tiered":
             self.H += self.omega_c * self.a.dag() * self.a # cavity hamiltonian
-            self.H += self.g * sum(self.sx) * self.a.dag() * self.a # system-bath hamiltonian
+            self.H += self.g * sum(self.sx) * (self.a.dag() + self.a) # system-bath hamiltonian
     
     def drive_coeff(self, t, args):
         if 0.0 <= t <= self.T_drive:
