@@ -106,9 +106,8 @@ class Solver:
         for i in range(self.n_tls):
             n_th.append(1 / (np.exp(self.omega_tls[i] / self.T) - 1))
         self.c_ops = []
-        for i in range(self.n_tls):
-            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
-            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
+        self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
+        self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
         if self._name == "Tiered": 
             self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
