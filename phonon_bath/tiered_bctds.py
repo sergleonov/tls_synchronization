@@ -22,6 +22,7 @@ def main():
     T_total = 1600
     T_drive = 100.0
     dt = 0.5
+    n_tls = len(tls_freqs)
     n_freqs = 300
 
     omega_c = np.mean(tls_freqs)
@@ -36,6 +37,7 @@ def main():
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
@@ -48,6 +50,7 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
+                    n_tls=n_tls,
                     n_freqs=n_freqs)
     
     tier_exc, tier_sp = tier.run()
@@ -74,6 +77,7 @@ def main():
             T_total=T_total, 
             T_drive=T_drive, 
             dt=dt, 
+            n_tls=n_tls,
             n_freqs=n_freqs, 
             omega_c=omega_c,
             Nb=Nb)

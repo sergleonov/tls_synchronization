@@ -22,6 +22,7 @@ def main():
     T_total = 1600
     T_drive = 100.0
     dt = 0.5
+    n_tls = len(tls_freqs)
     n_freqs = 300
 
     Nk = 3
@@ -44,6 +45,7 @@ def main():
                 T_total=T_total, 
                 T_drive=T_drive, 
                 dt=dt, 
+                n_tls=n_tls,
                 n_freqs=n_freqs,
                 sd_type=sd_type,
                 ohmicity=ohmicity)
@@ -57,6 +59,7 @@ def main():
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
@@ -69,6 +72,7 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
+                    n_tls=n_tls,
                     n_freqs=n_freqs)
     
     heom_exc, heom_sp = heom.run()
@@ -101,6 +105,7 @@ def main():
             T_total=T_total, 
             T_drive=T_drive, 
             dt=dt, 
+            n_tls=n_tls,
             n_freqs=n_freqs, 
             omega_c=omega_c,
             Nb=Nb,

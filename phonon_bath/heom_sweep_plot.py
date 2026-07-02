@@ -40,6 +40,7 @@ def main():
             T_total = data['T_total']
             T_drive = data['T_drive']
             dt = data['dt']
+            n_tls = data['n_tls']
             n_freqs = data['n_freqs']
             ohmicity = data['ohmicity'] + 0
             sd_type = data['sd_type']
@@ -57,6 +58,7 @@ def main():
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         sd_type=sd_type,
                         ohmicity=ohmicity)

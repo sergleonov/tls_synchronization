@@ -22,6 +22,7 @@ class Solver:
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
+                 n_tls=2,
                  n_freqs=300,
                  is_qutip_solver=None,
                  name="Abstract"):
@@ -41,7 +42,7 @@ class Solver:
         self.T_drive = T_drive   # ns
         self.dt = dt # ns
 
-        self.n_tls = len(self.omega_tls) # number of TLS in the system
+        self.n_tls = n_tls # number of TLS in the system
         self.is_qutip_solver = is_qutip_solver
 
         # time list and drive frequencies
@@ -66,6 +67,7 @@ class Solver:
             "T_total":self.T_total, 
             "T_drive":self.T_drive, 
             "dt":self.dt, 
+            "n_tls":self.n_tls,
             "n_freqs":self.n_freqs,
             "name":self._name
         }
@@ -80,6 +82,7 @@ class Solver:
                     T_total=d["T_total"], 
                     T_drive=d["T_drive"], 
                     dt=d["dt"], 
+                    n_tls=d["n_tls"],
                     n_freqs=d["n_freqs"],
                     name=d["name"])
 
@@ -103,10 +106,9 @@ class Solver:
         for i in range(self.n_tls):
             n_th.append(1 / (np.exp(self.omega_tls[i] / self.T) - 1))
         self.c_ops = []
-        for i in range(self.n_tls): 
-            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm[i]))
-            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
-        # mode collapse for tiered system
+        for i in range(self.n_tls):
+            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * self.sm[i])
+            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * self.sp[i])
         if self._name == "Tiered": 
             self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
@@ -246,17 +248,15 @@ class Solver:
 
         C = None
         for i in range(n_steps):
-            start = step * i + 1
+            start = step * i
             end = start + window_size
             if end > self.n_time:
-                C = np.corrcoef(x[start::], y[start::])[1, 0]
-                C_t[start::] = C
+                C = np.corrcoef(x[start:-1], y[start:-1])[1, 0]
+                C_t[start:-1] = C
                 break
             C = np.corrcoef(x[start:end], y[start:end])[1, 0]
             C_t[start:end] = C
         return C_t
-
-    # TODO: implement a function to compute pearson correlation in an abstract way to avoid copy-paste code in subclasses
         
 # --------------------- HEOM --------------------
 
@@ -273,6 +273,7 @@ class HEOM(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
+                 n_tls=2,
                  n_freqs=300,
                  sd_type="drude",
                  ohmicity=None):
@@ -289,6 +290,7 @@ class HEOM(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="HEOM")
@@ -334,6 +336,7 @@ class HEOM(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"],  
+                            n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"],
                             Nk=d["Nk"],
                             max_depth=d["max_depth"],
@@ -470,6 +473,7 @@ class TEMPO(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
+                 n_tls=2,
                  n_freqs=300,
                  zeta=1,
                  cutoff_type="exponential",
@@ -486,6 +490,7 @@ class TEMPO(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt,
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=False,
                         name="TEMPO")
@@ -543,6 +548,7 @@ class TEMPO(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
+                            n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"],
                             zeta=d["ohmicity"],
                             cutoff_type=d["cutoff_type"],
@@ -669,6 +675,7 @@ class Lindblad(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
+                 n_tls=2,
                  n_freqs=300):
         
         super().__init__(tls_freqs=tls_freqs, 
@@ -679,6 +686,7 @@ class Lindblad(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="Markovian")
@@ -706,6 +714,7 @@ class Lindblad(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
+                            n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"])
     
     def __str__(self):
@@ -807,7 +816,8 @@ class TieredSolver(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 n_freqs=300,
+                 n_tls=2,
+                 n_freqs=30,
                  omega_c=3.75,
                  Nb=10):
         
@@ -823,6 +833,7 @@ class TieredSolver(Solver):
                         T_total=T_total, 
                         T_drive=T_drive, 
                         dt=dt, 
+                        n_tls=n_tls,
                         n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="Tiered")
@@ -855,6 +866,7 @@ class TieredSolver(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
+                            n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"],
                             omega_c=d["omega_c"],
                             Nb=d["Nb"])
