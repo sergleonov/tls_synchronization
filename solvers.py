@@ -107,8 +107,8 @@ class Solver:
             n_th.append(1 / (np.exp(self.omega_tls[i] / self.T) - 1))
         self.c_ops = []
         for i in range(self.n_tls):
-            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * self.sm[i])
-            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * self.sp[i])
+            self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm[i]))
+            self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp[i]))
         if self._name == "Tiered": 
             self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
@@ -248,15 +248,17 @@ class Solver:
 
         C = None
         for i in range(n_steps):
-            start = step * i
+            start = step * i + 1
             end = start + window_size
             if end > self.n_time:
-                C = np.corrcoef(x[start:-1], y[start:-1])[1, 0]
-                C_t[start:-1] = C
+                C = np.corrcoef(x[start::], y[start::])[1, 0]
+                C_t[start::] = C
                 break
             C = np.corrcoef(x[start:end], y[start:end])[1, 0]
             C_t[start:end] = C
         return C_t
+
+# TODO: implement a function to compute pearson correlation in an abstract way to avoid copy-paste code in subclasses
         
 # --------------------- HEOM --------------------
 
@@ -817,7 +819,7 @@ class TieredSolver(Solver):
                  T_drive=100.0, 
                  dt=0.5, 
                  n_tls=2,
-                 n_freqs=30,
+                 n_freqs=300,
                  omega_c=3.75,
                  Nb=10):
         
