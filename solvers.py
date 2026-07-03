@@ -293,7 +293,7 @@ class Solver:
             if self.is_qutip_solver:
                 exp_x = qt.expect(self.sx[i], states)
             else:
-                t, exp_x = states.expectation(self.sx[i], real=True)
+                t, exp_x = states.expectations(self.sx[i], real=True)
 
             exp_xs.append(exp_x)
         
@@ -598,7 +598,7 @@ class TEMPO(Solver):
     def __str__(self):
         return super().__str__() + f"_gamma_bath_{self.gamma_bath}_tcut{self.tcut}_zeta_{self.ohmicity}"
     
-    def _worker(self, omega_d, process_tensor):
+    def _worker(self, omega_d, process_tensor, store_states=False):
         # total hamiltonian
         args = {"omega": omega_d}
         def ham(t):
@@ -616,7 +616,9 @@ class TEMPO(Solver):
         t, exc_tempo = dynamics.expectations(self.collective_exc, real=True)
         t, sp_tempo  = dynamics.expectations(self.collective_sp, real=False)
 
-        return exc_tempo, sp_tempo, dynamics
+        if store_states:
+            return exc_tempo, sp_tempo, dynamics
+        return exc_tempo, sp_tempo
     
     def run(self):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
@@ -645,7 +647,7 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
         Qt = np.zeros((self.n_time, len(theta), len(phi)))
 
         eval_husimi_partial = partial(self.eval_husimi,
@@ -669,7 +671,7 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
         
         phases = []
 
@@ -687,7 +689,7 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
 
         return self._cor_sim_helper(dynamics, self._pearson_evolution, window_size, overlap)
     
@@ -697,7 +699,7 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, dynamics = self._worker(omega_d, process_tensor)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
 
         return self._cor_sim_helper(dynamics, self._plv_evolution, window_size, overlap)
     

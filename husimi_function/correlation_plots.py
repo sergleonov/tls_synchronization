@@ -103,7 +103,7 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    solvers = [mark, heom, tier, tempo]
+    solvers = [mark, tier, heom, tempo]
     for solver in solvers:
         correlations, t = solver.plv_sim(omega_d, window_size, overlap)
         plot_correlations(correlations, t, solver._name, correlation="PLV", filename=f"correlation_drive_{omega_d}_{solver}")
