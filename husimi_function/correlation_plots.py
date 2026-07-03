@@ -35,7 +35,7 @@ def main():
     # TEMPO params
     zeta = 1
     cutoff_type = "exponential"
-    tcut = 5.0
+    tcut = 2.5
     epsrel = 1e-4
 
 
@@ -103,10 +103,10 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    solvers = [mark, heom, tier]
+    solvers = [mark, heom, tier, tempo]
     for solver in solvers:
-        correlations, t = solver.correlation_sim(omega_d, window_size, overlap)
-        plot_correlations(correlations, t, solver._name, filename=f"correlation_drive_{omega_d}_{solver}")
+        correlations, t = solver.plv_sim(omega_d, window_size, overlap)
+        plot_correlations(correlations, t, solver._name, correlation="PLV", filename=f"correlation_drive_{omega_d}_{solver}")
     
     print("Showing plots...")
     plt.show()

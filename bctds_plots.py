@@ -336,7 +336,7 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filen
         os.makedirs("phase_plots", exist_ok=True)
         plt.savefig(f"phase_plots/{filename}.png")
 
-def plot_correlations(correlations, tlist, solver_name, save=True, filename="correlations_plot"):
+def plot_correlations(correlations, tlist, solver_name, correlation, save=True, filename="correlations_plot"):
     fig, ax = plt.subplots(1, 1, figsize=(6,6))
 
     lgd_strs = []
@@ -346,14 +346,14 @@ def plot_correlations(correlations, tlist, solver_name, save=True, filename="cor
         lgd_strs.append(f"{cor}")
     
     ax.set_xlabel("Time [us]")
-    ax.set_ylabel("Correlation")
-    ax.set_title(f"Pearson Correlation Over Time ({solver_name})")
+    ax.set_ylabel(f"{correlation}")
+    ax.set_title(f"{correlation} Over Time ({solver_name})")
     ax.legend(lgd_strs)
     plt.tight_layout()
 
     if save:
         os.makedirs("correlation_plots", exist_ok=True)
-        plt.savefig(f"correlation_plots/{filename}.png")
+        plt.savefig(f"correlation_plots/{correlation}_{filename}.png")
 
 def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
     gridspec = {'width_ratios': [1, 0.1]} 

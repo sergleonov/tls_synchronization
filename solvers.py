@@ -7,6 +7,7 @@ import qutip as qt
 from qutip.solver.heom import HEOMSolver
 from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment
 from functools import partial
+from scipy.signal import hilbert
 
 SOLVERS = ["Markovian", "Tiered", "HEOM", "TEMPO"]
 SD_TYPES = ["power", "drude"]
@@ -109,7 +110,7 @@ class Solver:
         for i in range(self.n_tls):
             self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
             self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
-        if self._name == "Tiered": 
+        if self._name == "Tiered":
             self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
             self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * (self.a))
@@ -240,7 +241,7 @@ class Solver:
             # TODO: implement TEMPO Husimi computation
             raise NotImplementedError("Unsupported computation for TEMPO")
         
-    def pearson_evolution(self, x, y, window_size, overlap=1):
+    def _pearson_evolution(self, x, y, window_size, overlap=1):
         step = window_size - overlap
         assert step > 0
         n_steps = self.n_time // step + 1
@@ -260,6 +261,48 @@ class Solver:
 
 # TODO: implement a function to compute pearson correlation in an abstract way to avoid copy-paste code in subclasses
         
+    # helper for computing phase lock value
+    def _plv(self, analytic_x, analytic_y):
+        phase_x, phase_y = np.angle(analytic_x), np.angle(analytic_y)
+        phase_diff = phase_x - phase_y
+        return np.abs(np.mean(np.exp(1j * phase_diff)))
+
+    def _plv_evolution(self, x, y, window_size, overlap=1):
+        step = window_size - overlap
+        assert step > 0
+        n_steps = self.n_time // step + 1
+        plv_t = np.zeros(self.n_time)
+
+        # analytic signal
+        x_a, y_a = hilbert(np.real(x)), hilbert(np.real(y))
+
+        for i in range(n_steps):
+            start = step * i + 1
+            end = start + window_size
+            if end > self.n_time:
+                plv_t[start::] = self._plv(x_a[start::], y_a[start::])
+                break
+            plv_t[start:end] = self._plv(x_a[start:end], y_a[start:end])
+        return plv_t
+    
+    def _cor_sim_helper(self, states, corr_evo, window_size, overlap):
+        plvs = {}
+        exp_xs = [] # expectations in x
+
+        for i in range(self.n_tls):
+            if self.is_qutip_solver:
+                exp_x = qt.expect(self.sx[i], states)
+            else:
+                t, exp_x = states.expectation(self.sx[i], real=True)
+
+            exp_xs.append(exp_x)
+        
+        for i in range(0, len(exp_xs)):
+            for j in range(i+1, len(exp_xs)):
+                plvs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = corr_evo(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
+
+        return plvs, self.tlist
+    
 # --------------------- HEOM --------------------
 
 class HEOM(Solver):
@@ -442,25 +485,20 @@ class HEOM(Solver):
         
         return phases, self.tlist
         
-    def correlation_sim(self, omega_d, window_size, overlap):
+    def pearson_sim(self, omega_d, window_size, overlap):
         self._build_bath()
 
         exc, sp, states = self._worker(omega_d, store_states=True)
 
-        correlations = {}
-        exp_xs = [] # expectations in x
+        return self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+    
+    def plv_sim(self, omega_d, window_size, overlap):
+        self._build_bath()
 
-        for i in range(self.n_tls):
-            e_ops = self.sx[i]
-            exp_x = qt.expect(e_ops, states)
+        exc, sp, states = self._worker(omega_d, store_states=True)
 
-            exp_xs.append(exp_x)
-        
-        for i in range(0, len(exp_xs)):
-            for j in range(i+1, len(exp_xs)):
-                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
+        return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
 
-        return correlations, self.tlist
 
 # --------------------- TEMPO --------------------
 
@@ -643,7 +681,7 @@ class TEMPO(Solver):
         
         return phases, self.tlist
     
-    def correlation_sim(self, omega_d, window_size, overlap):
+    def pearson_sim(self, omega_d, window_size, overlap):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
@@ -651,19 +689,17 @@ class TEMPO(Solver):
 
         exc, sp, dynamics = self._worker(omega_d, process_tensor)
 
-        correlations = {}
-        exp_xs = [] # expectations in x
+        return self._cor_sim_helper(dynamics, self._pearson_evolution, window_size, overlap)
+    
+    def plv_sim(self, omega_d, window_size, overlap):
+        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
+                                            start_time=0.0,
+                                            end_time=self.T_total,
+                                            parameters=self.tempo_params)
 
-        for i in range(self.n_tls):
-            t, exp_x = dynamics.expectations(self.sx[i], real=True)
+        exc, sp, dynamics = self._worker(omega_d, process_tensor)
 
-            exp_xs.append(exp_x)
-        
-        for i in range(0, len(exp_xs)):
-            for j in range(i+1, len(exp_xs)):
-                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
-
-        return correlations, self.tlist
+        return self._cor_sim_helper(dynamics, self._plv_evolution, window_size, overlap)
     
 # --------------------- Markovian --------------------
 
@@ -790,20 +826,12 @@ class Lindblad(Solver):
     def correlation_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
-        correlations = {}
-        exp_xs = [] # expectations in x
+        return self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+    
+    def plv_sim(self, omega_d, window_size, overlap):
+        exc, sp, states = self._worker(omega_d, store_states=True)
 
-        for i in range(self.n_tls):
-            e_ops = self.sx[i]
-            exp_x = qt.expect(e_ops, states)
-
-            exp_xs.append(exp_x)
-        
-        for i in range(0, len(exp_xs)):
-            for j in range(i+1, len(exp_xs)):
-                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
-
-        return correlations, self.tlist
+        return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
 
 # --------------------- Tiered --------------------
     
@@ -944,18 +972,9 @@ class TieredSolver(Solver):
     def correlation_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
-        correlations = {}
-        exp_xs = [] # expectations in x
+        return self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+    
+    def plv_sim(self, omega_d, window_size, overlap):
+        exc, sp, states = self._worker(omega_d, store_states=True)
 
-        for i in range(self.n_tls):
-            e_ops = self.sx[i]
-            exp_x = qt.expect(e_ops, states)
-
-            exp_xs.append(exp_x)
-        
-        for i in range(0, len(exp_xs)):
-            for j in range(i+1, len(exp_xs)):
-                correlations[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self.pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
-
-        return correlations, self.tlist
-
+        return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
