@@ -481,7 +481,7 @@ class HEOM(Solver):
             e_ops = [self.sx[i], self.sy[i]]
             exp_x, exp_y = qt.expect(e_ops, states)
 
-            phases.append(np.arctan2(exp_y, exp_x))
+            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
         
         return phases, self.tlist
         
@@ -821,7 +821,7 @@ class Lindblad(Solver):
             e_ops = [self.sx[i], self.sy[i]]
             exp_x, exp_y = qt.expect(e_ops, states)
 
-            phases.append(np.arctan2(exp_y, exp_x))
+            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
         
         return phases, self.tlist
     
@@ -967,7 +967,7 @@ class TieredSolver(Solver):
             e_ops = [self.sx[i], self.sy[i]]
             exp_x, exp_y = qt.expect(e_ops, states)
 
-            phases.append(np.arctan2(exp_y, exp_x))
+            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
         
         return phases, self.tlist
     
