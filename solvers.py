@@ -285,6 +285,22 @@ class Solver:
             plv_t[start:end] = self._plv(x_a[start:end], y_a[start:end])
         return plv_t
     
+    def _phase_sim_helper(self, states):
+        phases = []
+
+        for i in range(self.n_tls):
+
+            if self.is_qutip_solver:
+                e_ops = [self.sx[i], self.sy[i]]
+                exp_x, exp_y = qt.expect(e_ops, states)
+            else:
+                t, exp_x = states.expectations(self.sx[i], real=True)
+                t, exp_y = states.expectations(self.sy[i], real=True)
+
+            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
+        
+        return phases, self.tlist
+    
     def _cor_sim_helper(self, states, corr_evo, window_size, overlap):
         plvs = {}
         exp_xs = [] # expectations in x
@@ -475,15 +491,7 @@ class HEOM(Solver):
 
         exc, sp, states = self._worker(omega_d, store_states=True)
         
-        phases = []
-
-        for i in range(self.n_tls):
-            e_ops = [self.sx[i], self.sy[i]]
-            exp_x, exp_y = qt.expect(e_ops, states)
-
-            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
-        
-        return phases, self.tlist
+        return self._phase_sim_helper(states)
         
     def pearson_sim(self, omega_d, window_size, overlap):
         self._build_bath()
@@ -499,7 +507,23 @@ class HEOM(Solver):
 
         return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
 
+    def phase_corr_sim(self, omega_d, window_size, overlap, corr):
+        self._build_bath()
 
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        match corr:
+            case "plv":
+                evo_func = self._plv_evolution
+            case "pearson":
+                evo_func = self._pearson_evolution
+            case _:
+                raise ValueError("Error: Invalid correlation name.")
+
+        phases, t = self._phase_sim_helper(states)
+        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
+
+        return phases, corr, t
 # --------------------- TEMPO --------------------
 
 class TEMPO(Solver):
@@ -673,15 +697,7 @@ class TEMPO(Solver):
 
         exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
         
-        phases = []
-
-        for i in range(self.n_tls):
-            t, exp_x = dynamics.expectations(self.sx[i], real=True)
-            t, exp_y = dynamics.expectations(self.sy[i], real=True)
-
-            phases.append(np.arctan2(exp_y, exp_x))
-        
-        return phases, self.tlist
+        return self._phase_sim_helper(dynamics)
     
     def pearson_sim(self, omega_d, window_size, overlap):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
@@ -702,6 +718,27 @@ class TEMPO(Solver):
         exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
 
         return self._cor_sim_helper(dynamics, self._plv_evolution, window_size, overlap)
+    
+    def phase_corr_sim(self, omega_d, window_size, overlap, corr):
+        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
+                                            start_time=0.0,
+                                            end_time=self.T_total,
+                                            parameters=self.tempo_params)
+
+        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
+
+        match corr:
+            case "plv":
+                evo_func = self._plv_evolution
+            case "pearson":
+                evo_func = self._pearson_evolution
+            case _:
+                evo_func = None
+
+        phases, t = self._phase_sim_helper(dynamics)
+        corr, t = self._cor_sim_helper(dynamics, evo_func, window_size, overlap)
+
+        return phases, corr, t
     
 # --------------------- Markovian --------------------
 
@@ -815,17 +852,9 @@ class Lindblad(Solver):
     def phase_sim(self, omega_d):
         exc, sp, states = self._worker(omega_d, store_states=True)
         
-        phases = []
-
-        for i in range(self.n_tls):
-            e_ops = [self.sx[i], self.sy[i]]
-            exp_x, exp_y = qt.expect(e_ops, states)
-
-            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
-        
-        return phases, self.tlist
+        return self._phase_sim_helper(states)
     
-    def correlation_sim(self, omega_d, window_size, overlap):
+    def pearson_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         return self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
@@ -834,6 +863,22 @@ class Lindblad(Solver):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
+    
+    def phase_corr_sim(self, omega_d, window_size, overlap, corr):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        match corr:
+            case "plv":
+                evo_func = self._plv_evolution
+            case "pearson":
+                evo_func = self._pearson_evolution
+            case _:
+                evo_func = None
+
+        phases, t = self._phase_sim_helper(states)
+        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
+
+        return phases, corr, t
 
 # --------------------- Tiered --------------------
     
@@ -961,17 +1006,9 @@ class TieredSolver(Solver):
     def phase_sim(self, omega_d):
         exc, sp, states = self._worker(omega_d, store_states=True)
         
-        phases = []
+        return self._phase_sim_helper(states)
 
-        for i in range(self.n_tls):
-            e_ops = [self.sx[i], self.sy[i]]
-            exp_x, exp_y = qt.expect(e_ops, states)
-
-            phases.append(np.arctan2(np.real(exp_y), np.real(exp_x)))
-        
-        return phases, self.tlist
-    
-    def correlation_sim(self, omega_d, window_size, overlap):
+    def pearson_sim(self, omega_d, window_size, overlap):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         return self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
@@ -980,3 +1017,19 @@ class TieredSolver(Solver):
         exc, sp, states = self._worker(omega_d, store_states=True)
 
         return self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
+
+    def phase_corr_sim(self, omega_d, window_size, overlap, corr):
+        exc, sp, states = self._worker(omega_d, store_states=True)
+
+        match corr:
+            case "plv":
+                evo_func = self._plv_evolution
+            case "pearson":
+                evo_func = self._pearson_evolution
+            case _:
+                evo_func = None
+
+        phases, t = self._phase_sim_helper(states)
+        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
+
+        return phases, corr, t
