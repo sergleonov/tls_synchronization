@@ -355,7 +355,7 @@ def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, fi
         os.makedirs("correlation_plots", exist_ok=True)
         plt.savefig(f"correlation_plots/{corr_name}_{filename}.png")
 
-def plot_phase_corr_evolution(phases, correlations, corr_name, tlist, tls_freqs, labels, save=True, filename="corr_phase_evo"):
+def plot_phase_corr_evolution(phases, correlations, corr_name, tlist, tls_freqs, labels, filenames, save=True):
     
     for i in range(len(phases)):
         fig, ax = plt.subplots(2, 1, figsize=(14,8))
@@ -382,14 +382,14 @@ def plot_phase_corr_evolution(phases, correlations, corr_name, tlist, tls_freqs,
 
         ax[1].set_xlabel("Time [us]")
         ax[1].set_ylabel(f"{corr_name}")
-        ax[1].set_title(f"{corr_name} Over Time")
+        ax[1].set_title(f"{corr_name.capitalize()} Over Time")
         ax[1].legend(leg_strs)
         plt.suptitle(f"{labels[i]} Phase Difference and TLS Correlations")
         plt.tight_layout()
 
         if save:
             os.makedirs("correlation_plots", exist_ok=True)
-            plt.savefig(f"correlation_plots/{corr_name}_{filename}.png")
+            plt.savefig(f"correlation_plots/{corr_name}_{filenames[i]}.png")
 
 def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
     gridspec = {'width_ratios': [1, 0.1]} 

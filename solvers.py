@@ -239,7 +239,7 @@ class Solver:
                     return prefactor * np.transpose(Q_res)
         else:
             # TODO: implement TEMPO Husimi computation
-            raise NotImplementedError("Unsupported computation for TEMPO")
+            raise NotImplementedError("Husimi-Q computation is not supported for non QuTiP solver.")
         
     def _pearson_evolution(self, x, y, window_size, overlap=1):
         step = window_size - overlap
@@ -258,8 +258,6 @@ class Solver:
             C = np.corrcoef(x[start:end], y[start:end])[1, 0]
             C_t[start:end] = C
         return C_t
-
-# TODO: implement a function to compute pearson correlation in an abstract way to avoid copy-paste code in subclasses
         
     # helper for computing phase lock value
     def _plv(self, analytic_x, analytic_y):
@@ -284,6 +282,28 @@ class Solver:
                 break
             plv_t[start:end] = self._plv(x_a[start:end], y_a[start:end])
         return plv_t
+    
+    def _entropy_evolution(self, states):
+        # TODO: implement entropy measure for TEMPO
+        assert len(states) == self.n_time
+
+        if self.is_qutip_solver:
+            res_dict = {}
+            for i in range(self.n_tls):
+                for j in range(i+1, self.n_tls):
+                    entropy_t = np.zeros(self.n_time)
+                    for idx, state in enumerate(states):
+                        if self._name == "Tiered":
+                            # trace out environment
+                            state = qt.ptrace(state, [i for i in range(self.n_tls)]) 
+                            entropy_t[idx] = qt.entropy_mutual(state, i, j)
+                        else:
+                            entropy_t[idx] = qt.entropy_mutual(state, i, j)
+                    res_dict[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = entropy_t
+
+            return res_dict, self.tlist
+        else:
+            raise NotImplementedError("Entropy computation is not supported for non QuTiP solver.")
     
     def _phase_sim_helper(self, states):
         phases = []
@@ -511,17 +531,17 @@ class HEOM(Solver):
         self._build_bath()
 
         exc, sp, states = self._worker(omega_d, store_states=True)
+        phases, t = self._phase_sim_helper(states)
 
         match corr:
             case "plv":
-                evo_func = self._plv_evolution
+                corr, t = self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
             case "pearson":
-                evo_func = self._pearson_evolution
+                corr, t = self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+            case "entropy":
+                corr, t = self._entropy_evolution(states)
             case _:
                 raise ValueError("Error: Invalid correlation name.")
-
-        phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
 
         return phases, corr, t
 # --------------------- TEMPO --------------------
@@ -720,23 +740,18 @@ class TEMPO(Solver):
         return self._cor_sim_helper(dynamics, self._plv_evolution, window_size, overlap)
     
     def phase_corr_sim(self, omega_d, window_size, overlap, corr):
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
+        exc, sp, dynamics = self._worker(omega_d, store_states=True)
+        phases, t = self._phase_sim_helper(dynamics)
 
         match corr:
             case "plv":
-                evo_func = self._plv_evolution
+                corr, t = self._cor_sim_helper(dynamics, self._plv_evolution, window_size, overlap)
             case "pearson":
-                evo_func = self._pearson_evolution
+                corr, t = self._cor_sim_helper(dynamics, self._pearson_evolution, window_size, overlap)
+            case "entropy":
+                corr, t = self._entropy_evolution(dynamics)
             case _:
-                evo_func = None
-
-        phases, t = self._phase_sim_helper(dynamics)
-        corr, t = self._cor_sim_helper(dynamics, evo_func, window_size, overlap)
+                raise ValueError("Error: Invalid correlation name.")
 
         return phases, corr, t
     
@@ -866,17 +881,17 @@ class Lindblad(Solver):
     
     def phase_corr_sim(self, omega_d, window_size, overlap, corr):
         exc, sp, states = self._worker(omega_d, store_states=True)
+        phases, t = self._phase_sim_helper(states)
 
         match corr:
             case "plv":
-                evo_func = self._plv_evolution
+                corr, t = self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
             case "pearson":
-                evo_func = self._pearson_evolution
+                corr, t = self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+            case "entropy":
+                corr, t = self._entropy_evolution(states)
             case _:
-                evo_func = None
-
-        phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
+                raise ValueError("Error: Invalid correlation name.")
 
         return phases, corr, t
 
@@ -1020,16 +1035,16 @@ class TieredSolver(Solver):
 
     def phase_corr_sim(self, omega_d, window_size, overlap, corr):
         exc, sp, states = self._worker(omega_d, store_states=True)
+        phases, t = self._phase_sim_helper(states)
 
         match corr:
             case "plv":
-                evo_func = self._plv_evolution
+                corr, t = self._cor_sim_helper(states, self._plv_evolution, window_size, overlap)
             case "pearson":
-                evo_func = self._pearson_evolution
+                corr, t = self._cor_sim_helper(states, self._pearson_evolution, window_size, overlap)
+            case "entropy":
+                corr, t = self._entropy_evolution(states)
             case _:
-                evo_func = None
-
-        phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, evo_func, window_size, overlap)
+                raise ValueError("Error: Invalid correlation name.")
 
         return phases, corr, t
