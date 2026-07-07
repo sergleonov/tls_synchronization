@@ -101,16 +101,17 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    corr_name = "entropy"
-    solvers = [mark, tier, heom]
+    corr_name = "quantum"
+    solvers = [mark, tier, heom, tempo]
 
     phases = []
     correlations = []
     labels = []
     files = []
+
     for solver in solvers:
         labels.append(solver._name)
-        p, c, t = solver.phase_corr_sim(omega_d, corr=corr_name, window_size=9, overlap=6)
+        p, c, t = solver.phase_corr_sim(omega_d, corr_name=corr_name, window_size=9, overlap=8)
         phases.append(p)
         correlations.append(c)
         files.append(f"drive_{omega_d}_{solver}")
