@@ -4,7 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 sys.path.append("../")
-from solvers import HEOM, Lindblad, TieredSolver
+from solvers import HEOM, Lindblad, TieredSolver, TEMPO
 from bctds_plots import generate_husimi_anim
 
 
@@ -24,11 +24,19 @@ def main():
     n_tls = len(tls_freqs)
     n_freqs = 300
 
+    # Tiered params
     omega_c = np.mean(tls_freqs)
     Nb = 10
 
-    sd_type = "drude"
-    ohmicity = None
+    # HEOM params
+    sd_type = "power"
+    ohmicity = 1.0
+
+    # TEMPO params
+    zeta = 1
+    cutoff_type = "exponential"
+    tcut = 2.5
+    epsrel = 1e-4
 
     heom = HEOM(tls_freqs=tls_freqs, 
                 J=J, 
@@ -71,10 +79,27 @@ def main():
                         omega_c=omega_c,
                         Nb=Nb)
     
-    solvers = [mark, heom, tier]
+    tempo = TEMPO(tls_freqs=tls_freqs, 
+                J=J, 
+                Omega_amp=Omega_amp, 
+                lam=g, 
+                gamma_bath=gamma_bath, 
+                T=T, 
+                T_total=T_total, 
+                T_drive=T_drive, 
+                dt=dt, 
+                n_tls=n_tls,
+                n_freqs=n_freqs,
+                zeta=zeta,
+                cutoff_type=cutoff_type,
+                tcut=tcut,
+                epsrel=epsrel)
+    
+    solvers = [tempo]
     
     tls_idx = 0
     method = "ptrace"
+
     omega_d = tls_freqs[0]
     theta = np.linspace(0, np.pi, 100)
     phi = np.linspace(0, 2*np.pi, 80)

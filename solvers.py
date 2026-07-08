@@ -57,6 +57,8 @@ class Solver:
             self.omega_tls = tls_freqs
         else:
             self.omega_tls = np.random.uniform(3.0, 5.0, self.n_tls) # GHz
+        
+        assert self.n_tls == len(self.omega_tls)
 
     def __getstate__(self):
         d = {
@@ -216,30 +218,30 @@ class Solver:
     def eval_husimi(self, rho, theta, phi, tls_idx=None, method="avg"):
         assert method in HUSIMI_EVAL_METHODS, "Error: Invalid husimi evaluation method"
 
-        if self.is_qutip_solver:
-            if rho.isket:
-                rho = qt.ket2dm(rho)
-            
-            j = 1/2 # spin of TLS
-            prefactor = (2 * j + 1) / (4 * np.pi) # husimi prefactor
-            match method:
-                case "ptrace":
-                    if tls_idx is None:
-                        raise ValueError("Error: Index for the partial trace is None")
-                    rho_partial = qt.ptrace(rho, tls_idx)
+        if self._name == "TEMPO":
+            dims = [2 for _ in range(self.n_tls)]
+            rho = qt.Qobj(rho, dims=[dims, dims])
+
+        if rho.isket:
+            rho = qt.ket2dm(rho)
+        
+        j = 1/2 # spin of TLS
+        prefactor = (2 * j + 1) / (4 * np.pi) # husimi prefactor
+        match method:
+            case "ptrace":
+                if tls_idx is None:
+                    raise ValueError("Error: Index for the partial trace is None")
+                rho_partial = qt.ptrace(rho, tls_idx)
+                Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
+                return prefactor * np.transpose(Q)
+            case "avg":
+                Qs = []
+                for i in range(self.n_tls):
+                    rho_partial = qt.ptrace(rho, i)
                     Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
-                    return prefactor * np.transpose(Q)
-                case "avg":
-                    Qs = []
-                    for i in range(self.n_tls):
-                        rho_partial = qt.ptrace(rho, i)
-                        Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
-                        Qs.append(Q)
-                    Q_res = np.mean(Qs, axis=0)
-                    return prefactor * np.transpose(Q_res)
-        else:
-            # TODO: implement TEMPO Husimi computation
-            raise NotImplementedError("Husimi-Q computation is not supported for non QuTiP solver.")
+                    Qs.append(Q)
+                Q_res = np.mean(Qs, axis=0)
+                return prefactor * np.transpose(Q_res)
         
     def _pearson_evolution(self, x, y, window_size, overlap=1):
         step = window_size - overlap
