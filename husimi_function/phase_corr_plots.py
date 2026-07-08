@@ -101,26 +101,13 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    corr_name = "quantum"
+    corr_names = ["pearson", "plv", "quantum"]
     solvers = [mark, tier, heom, tempo]
 
-    phases = []
-    correlations = []
-    labels = []
-    files = []
-
     for solver in solvers:
-        labels.append(solver._name)
-        p, c, t = solver.phase_corr_sim(omega_d, corr_name=corr_name, window_size=9, overlap=8)
-        phases.append(p)
-        correlations.append(c)
-        files.append(f"drive_{omega_d}_{solver}")
-    
-    plot_phase_corr_evolution(phases, correlations, corr_name, t, solver.omega_tls, labels, filenames=files)
+        p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=9, overlap=8)
+        plot_phase_corr_evolution(p, c, corr_names, t, solver.omega_tls, solver.get_name(), filename=f"{solver}_drive_{omega_d}")
 
-    print("Showing plots...")
-    plt.show()
-    
 if __name__ == "__main__":
     status = main()
     sys.exit(status)

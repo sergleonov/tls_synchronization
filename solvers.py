@@ -322,7 +322,7 @@ class Solver:
         return phases, self.tlist
     
     def _cor_sim_helper(self, states, corr_name, window_size, overlap):
-
+        
         if corr_name.lower() == "entropy":
             return self._entropy_evolution(states)
 
@@ -445,6 +445,15 @@ class HEOM(Solver):
                             sd_type=d["sd_type"],
                             ohmicity=d["ohmicity"])
     
+    def get_name(self):
+        match self.sd_type:
+            case "power":
+                return self._name + f" (Power SD {self.ohmicity})"
+            case "drude":
+                return self._name + f" (Drude-Lorentz)"
+            case _:
+                return self._name
+
     def __str__(self):
         assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         sd = self.sd_type
@@ -548,13 +557,19 @@ class HEOM(Solver):
 
         return self._cor_sim_helper(states, "plv", window_size, overlap)
 
-    def phase_corr_sim(self, omega_d, corr_name, window_size=None, overlap=None):
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
         self._build_bath()
 
         exc, sp, states = self._worker(omega_d, store_states=True)
         phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
 
+        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
         return phases, corr, t
 # --------------------- TEMPO --------------------
 
@@ -650,6 +665,9 @@ class TEMPO(Solver):
                             cutoff_type=d["cutoff_type"],
                             tcut=d["tcut"],
                             epsrel=d["epsrel"])
+    
+    def get_name(self):
+        return self._name + f" (Power SD {self.ohmicity})"
     
     def __str__(self):
         return super().__str__() + f"_gamma_bath_{self.gamma_bath}_tcut{self.tcut}_zeta_{self.ohmicity}"
@@ -751,7 +769,7 @@ class TEMPO(Solver):
 
         return self._cor_sim_helper(dynamics, "plv", window_size, overlap)
     
-    def phase_corr_sim(self, omega_d, corr_name, window_size=None, overlap=None):
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
@@ -759,8 +777,14 @@ class TEMPO(Solver):
         
         exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
         phases, t = self._phase_sim_helper(dynamics)
-        corr, t = self._cor_sim_helper(dynamics, corr_name, window_size, overlap)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, t = self._cor_sim_helper(dynamics, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
 
+        corr, t = self._cor_sim_helper(dynamics, corr_names, window_size, overlap)
         return phases, corr, t
     
 # --------------------- Markovian --------------------
@@ -817,6 +841,9 @@ class Lindblad(Solver):
                             n_tls=d["n_tls"],
                             n_freqs=d["n_freqs"])
     
+    def get_name(self):
+        return self._name
+
     def __str__(self):
         return super().__str__()
     
@@ -887,11 +914,17 @@ class Lindblad(Solver):
 
         return self._cor_sim_helper(states, "plv", window_size, overlap)
     
-    def phase_corr_sim(self, omega_d, corr_name, window_size=None, overlap=None):
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
         exc, sp, states = self._worker(omega_d, store_states=True)
         phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
 
+        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
         return phases, corr, t
 
 # --------------------- Tiered --------------------
@@ -961,6 +994,9 @@ class TieredSolver(Solver):
                             n_freqs=d["n_freqs"],
                             omega_c=d["omega_c"],
                             Nb=d["Nb"])
+    
+    def get_name(self):
+        return self._name
     
     def __str__(self):
         return super().__str__() + f"_mode_{self.omega_c}_Nb{self.Nb}_g_{self.g}"
@@ -1032,9 +1068,15 @@ class TieredSolver(Solver):
 
         return self._cor_sim_helper(states, "plv", window_size, overlap)
 
-    def phase_corr_sim(self, omega_d, corr_name, window_size=None, overlap=None):
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
         exc, sp, states = self._worker(omega_d, store_states=True)
         phases, t = self._phase_sim_helper(states)
-        corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
 
+        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
         return phases, corr, t

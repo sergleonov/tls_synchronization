@@ -355,41 +355,42 @@ def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, fi
         os.makedirs("correlation_plots", exist_ok=True)
         plt.savefig(f"correlation_plots/{corr_name}_{filename}.png")
 
-def plot_phase_corr_evolution(phases, correlations, corr_name, tlist, tls_freqs, labels, filenames, save=True):
-    
-    for i in range(len(phases)):
-        fig, ax = plt.subplots(2, 1, figsize=(14,8))
+def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs, solver_name, filename, save=True):
+    n_plots = len(correlations) + 1
 
-        # plot phase diffs
-        leg_strs = []
-        for k in range(len(phases)):
-            for j in range(k+1, len(phases[i])):
-                ax[0].plot(tlist, phases[i][k] - phases[i][j])
-                leg_strs.append(f"TLS {tls_freqs[k]} - TLS {tls_freqs[j]} ({labels[i]})")
+    fig, ax = plt.subplots(n_plots, 1, figsize=(16,4*n_plots))
 
-        ax[0].set_xlabel("Time [us]")
-        ax[0].set_ylabel("Phase (rad.)")
-        ax[0].set_title("Phase Differences Over Time")
-        ax[0].legend(leg_strs)
-        plt.tight_layout()
+    # plot phase diffs
+    leg_strs = []
+    for k in range(len(tls_freqs)):
+        for j in range(k+1, len(tls_freqs)):
+            ax[0].plot(tlist, phases[k] - phases[j])
+            leg_strs.append(f"TLS {tls_freqs[k]} - TLS {tls_freqs[j]} ({solver_name})")
 
+    ax[0].set_xlabel("Time [us]")
+    ax[0].set_ylabel("Phase (rad.)")
+    ax[0].set_title("Phase Differences Over Time")
+    ax[0].legend(leg_strs)
+
+    for i in range(len(correlations)):
         # plot correlations
         leg_strs = []
         for label, C_t in correlations[i].items():
             assert len(C_t) == len(tlist)
-            ax[1].plot(tlist, C_t)
+            ax[i+1].plot(tlist, C_t)
             leg_strs.append(label)
 
-        ax[1].set_xlabel("Time [us]")
-        ax[1].set_ylabel(f"{corr_name}")
-        ax[1].set_title(f"{corr_name.capitalize()} Over Time")
-        ax[1].legend(leg_strs)
-        plt.suptitle(f"{labels[i]} Phase Difference and TLS Correlations")
-        plt.tight_layout()
+        ax[i+1].set_xlabel("Time [us]")
+        ax[i+1].set_ylabel(f"{corr_names[i].capitalize()}")
+        ax[i+1].set_title(f"{corr_names[i].capitalize()} Over Time")
+        ax[i+1].legend(leg_strs)
+    plt.suptitle(f"{solver_name} Phase Difference and TLS Correlations", y=0.99)
+    
+    plt.tight_layout()
 
-        if save:
-            os.makedirs("correlation_plots", exist_ok=True)
-            plt.savefig(f"correlation_plots/{corr_name}_{filenames[i]}.png")
+    if save:
+        os.makedirs("correlation_plots", exist_ok=True)
+        plt.savefig(f"correlation_plots/corrs_{filename}.png")
 
 def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
     gridspec = {'width_ratios': [1, 0.1]} 
