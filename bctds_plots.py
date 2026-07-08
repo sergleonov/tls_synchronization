@@ -360,6 +360,13 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
 
     fig, ax = plt.subplots(n_plots, 1, figsize=(16,4*n_plots))
 
+    y_limits = {
+        "quantum": [-1, 1],
+        "pearson": [-1, 1],
+        "plv": [0, 1],
+        "entropy": [0, 1]
+    }
+
     # plot phase diffs
     leg_strs = []
     for k in range(len(tls_freqs)):
@@ -384,6 +391,7 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
         ax[i+1].set_ylabel(f"{corr_names[i].capitalize()}")
         ax[i+1].set_title(f"{corr_names[i].capitalize()} Over Time")
         ax[i+1].legend(leg_strs)
+        ax[i+1].set_ylim(y_limits[corr_names[i]])
     plt.suptitle(f"{solver_name} Phase Difference and TLS Correlations", y=0.99)
     
     plt.tight_layout()

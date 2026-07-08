@@ -20,7 +20,7 @@ def main():
     max_depth = 5
     T_total = 1000
     T_drive = 100.0
-    dt = 0.5
+    dt = 0.1
     n_tls = len(tls_freqs)
     n_freqs = 300
 
@@ -101,8 +101,8 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    corr_names = ["pearson", "plv", "quantum"]
-    solvers = [mark, tier, heom, tempo]
+    corr_names = ["pearson", "plv", "quantum", "entropy"]
+    solvers = [mark, heom]
 
     for solver in solvers:
         p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=9, overlap=8)

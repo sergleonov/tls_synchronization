@@ -359,7 +359,15 @@ class Solver:
                     case "pearson":
                         corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
                     case "quantum":
-                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = exp_xs_all - exp_xs[i] * exp_xs[j]
+                        if self.is_qutip_solver:
+                            q_corr = (exp_xs_all - exp_xs[i] * exp_xs[j]) / np.sqrt((qt.variance(self.sx[i], states) * qt.variance(self.sx[j], states)))
+                        else: # handle TEMPO
+                            def var(op):
+                                t, exp_op = states.expectations(op, real=True)
+                                t, exp_op_sq = states.expectations(np.matmul(op, op), real=True)
+                                return exp_op_sq - exp_op**2
+                            q_corr = (exp_xs_all - exp_xs[i] * exp_xs[j]) / np.sqrt((var(self.sx[i]) * var(self.sx[j])))
+                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = q_corr
                     case _:
                         raise ValueError("Error: Invalid correlation name.")
 

@@ -18,7 +18,7 @@ def main():
     max_depth = 5
     T_total = 100
     T_drive = 10.0
-    dt = 0.5
+    dt = 0.1
     n_tls = len(tls_freqs)
     n_freqs = 300
 
