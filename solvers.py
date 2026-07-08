@@ -284,26 +284,29 @@ class Solver:
         return plv_t
     
     def _entropy_evolution(self, states):
-        # TODO: implement entropy measure for TEMPO
         assert len(states) == self.n_time
 
-        if self.is_qutip_solver:
-            res_dict = {}
-            for i in range(self.n_tls):
-                for j in range(i+1, self.n_tls):
-                    entropy_t = np.zeros(self.n_time)
-                    for idx, state in enumerate(states):
-                        if self._name == "Tiered":
-                            # trace out environment
-                            state = qt.ptrace(state, [i for i in range(self.n_tls)]) 
-                            entropy_t[idx] = qt.entropy_mutual(state, i, j)
-                        else:
-                            entropy_t[idx] = qt.entropy_mutual(state, i, j)
-                    res_dict[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = entropy_t
+        if self._name == "TEMPO":
+            states = states.states
 
-            return res_dict, self.tlist
-        else:
-            raise NotImplementedError("Entropy computation is not supported for non QuTiP solver.")
+        res_dict = {}
+        for i in range(self.n_tls):
+            for j in range(i+1, self.n_tls):
+                entropy_t = np.zeros(self.n_time)
+                for idx, state in enumerate(states):
+                    if self._name == "Tiered":
+                        # trace out environment
+                        state = qt.ptrace(state, [i for i in range(self.n_tls)]) 
+                        entropy_t[idx] = qt.entropy_mutual(state, i, j)
+                    elif self._name == "TEMPO":
+                        dims = [2 for _ in range(self.n_tls)]
+                        rho = qt.Qobj(state, dims=[dims, dims])
+                        entropy_t[idx] = qt.entropy_mutual(rho, i, j)
+                    else:
+                        entropy_t[idx] = qt.entropy_mutual(state, i, j)
+                res_dict[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = entropy_t
+
+        return res_dict, self.tlist      
     
     def _phase_sim_helper(self, states):
         phases = []
