@@ -20,7 +20,7 @@ def main():
     max_depth = 5
     T_total = 400
     T_drive = 100.0
-    dt = 0.1
+    dt = 0.5
     n_tls = len(tls_freqs)
     n_freqs = 300
 
@@ -29,8 +29,8 @@ def main():
     Nb = 10
 
     # HEOM params
-    sd_type = "power"
-    ohmicity = 1.0
+    sd_type = "drude"
+    ohmicity = None
 
     # TEMPO params
     zeta = 1
@@ -95,7 +95,7 @@ def main():
                 tcut=tcut,
                 epsrel=epsrel)
     
-    solvers = [tempo]
+    solvers = [mark, heom]
     
     tls_idx = 0
     method = "ptrace"
@@ -108,13 +108,13 @@ def main():
     labels = []
     for solver in solvers:
         Qts.append(solver.husimi_sim(omega_d, theta, phi, method=method, tls_idx=tls_idx))
-        labels.append(solver._name)
+        labels.append(solver.get_name())
 
     sd = ""
     if sd_type == "power":
         sd = sd_type + f"_ohm{ohmicity}"
-    filename = f"sim_J{J}_Om{Omega_amp}_omega_c{omega_c}_cutoff{gamma_bath}_g{g}_{sd}_lam{lam}_dt{dt}_Nb{Nb}_Nk{Nk}_depth{max_depth}_T{T_total}"
-    generate_husimi_anim(Qts=Qts, tlist=heom.tlist, theta=theta, phi=phi, T_drive=heom.T_drive, labels=labels, filename=filename)
+    filename = f"sim_omega_d{omega_d}_{method}_J{J}_Om{Omega_amp}_omega_c{omega_c}_cutoff{gamma_bath}_g{g}_{sd}_lam{lam}_dt{dt}_Nb{Nb}_Nk{Nk}_depth{max_depth}"
+    generate_husimi_anim(Qts=Qts, tlist=heom.tlist, theta=theta, phi=phi, T_drive=heom.T_drive, labels=labels, method=method, omega_d=omega_d, filename=filename)
 
 if __name__ == "__main__":
     status = main()

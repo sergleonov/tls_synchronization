@@ -11,7 +11,7 @@ from scipy.signal import hilbert
 
 SOLVERS = ["Markovian", "Tiered", "HEOM", "TEMPO"]
 SD_TYPES = ["power", "drude"]
-HUSIMI_EVAL_METHODS = ["avg", "ptrace"]
+HUSIMI_EVAL_METHODS = ["avg", "ptrace", "diff"]
 
 class Solver:
     def __init__(self,
@@ -242,6 +242,12 @@ class Solver:
                     Qs.append(Q)
                 Q_res = np.mean(Qs, axis=0)
                 return prefactor * np.transpose(Q_res)
+            case "diff":
+                if self.n_tls != 2: raise ValueError("Error: Husimi Difference is only supported for 2 TLSs.")
+                rho_1, rho_2 = qt.ptrace(rho, 0), qt.ptrace(rho, 1)
+                Q1, theta_list, phi_list = qt.spin_q_function(rho_1, theta, phi)
+                Q2, theta_list, phi_list = qt.spin_q_function(rho_2, theta, phi)
+                return prefactor * np.transpose(Q1 - Q2)
             case _:
                 raise ValueError("Error: Invalid Husimi-Q evaluation method.")
         

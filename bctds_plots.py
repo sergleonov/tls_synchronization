@@ -228,7 +228,7 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         os.makedirs("bctds_figures",exist_ok=True)
         plt.savefig(f"bctds_figures/{filename}.png")
 
-def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, filename="husimi_animation"):
+def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, filename="husimi_animation"):
     for i in range(len(Qts)):
         assert len(Qts[i]) == len(tlist)
         assert np.shape(Qts[i][0]) == (len(theta), len(phi))
@@ -300,7 +300,7 @@ def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, filename="husi
             phase = "DRIVE OFF"
             color = 'red'
 
-        fig.suptitle(f"t = {t_now:.1f} ns | {phase}", color=color)
+        fig.suptitle(f"Drive: {omega_d} GHz, Method: {method}, t = {t_now:.1f} ns | {phase}", color=color)
 
     ani = anim.FuncAnimation(fig=fig, func=update, frames=len(tlist), interval=30)
     os.makedirs("husimi_animation",exist_ok=True)
