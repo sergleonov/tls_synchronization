@@ -29,8 +29,8 @@ def main():
     Nb = 10
 
     # HEOM params
-    sd_type = "power"
-    ohmicity = 1.0
+    sd_type = "drude"
+    ohmicity = None
 
     # TEMPO params
     zeta = 1
@@ -101,12 +101,12 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    corr_names = ["pearson", "plv", "quantum", "entropy"]
-    solvers = [mark, heom]
+    corr_names = ["pearson", "plv", "connected", "entropy"]
+    solvers = [mark, tier, heom, tempo]
 
     for solver in solvers:
-        p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=9, overlap=8)
-        plot_phase_corr_evolution(p, c, corr_names, t, solver.omega_tls, solver.get_name(), filename=f"{solver}_drive_{omega_d}")
+        p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=150, overlap=149)
+        plot_phase_corr_evolution(p, c, corr_names, t, solver.omega_tls, solver.get_name(), filename=f"{solver.get_name()}_drive_{omega_d}_freqs_{tls_freqs[0]}_{tls_freqs[1]}")
 
 if __name__ == "__main__":
     status = main()

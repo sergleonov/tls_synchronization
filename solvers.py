@@ -242,49 +242,31 @@ class Solver:
                     Qs.append(Q)
                 Q_res = np.mean(Qs, axis=0)
                 return prefactor * np.transpose(Q_res)
+            case _:
+                raise ValueError("Error: Invalid Husimi-Q evaluation method.")
         
     def _pearson_evolution(self, x, y, window_size, overlap=1):
         step = window_size - overlap
         assert step > 0
-        n_steps = self.n_time // step + 1
+        # TODO: add overlap control
         C_t = np.zeros(self.n_time)
-
-        C = None
-        for i in range(n_steps):
-            start = step * i + 1
-            end = start + window_size
-            if end > self.n_time:
-                C = np.corrcoef(x[start::], y[start::])[1, 0]
-                C_t[start::] = C
-                break
-            C = np.corrcoef(x[start:end], y[start:end])[1, 0]
-            C_t[start:end] = C
+        for i in range(window_size, self.n_time):
+            C_t[i] = np.corrcoef(x[i-window_size:i], y[i-window_size:i])[1, 0]
         return C_t
-        
-    # helper for computing phase lock value
-    def _plv(self, analytic_x, analytic_y):
-        phase_x, phase_y = np.angle(analytic_x), np.angle(analytic_y)
-        phase_diff = phase_x - phase_y
-        return np.abs(np.mean(np.exp(1j * phase_diff)))
-
+    
     def _plv_evolution(self, x, y, window_size, overlap=1):
         step = window_size - overlap
         assert step > 0
-        n_steps = self.n_time // step + 1
+        # TODO: add overlap control
+        phi1, phi2 = np.angle(x), np.angle(y)
+        phase_exp = np.exp(1j * (phi1 - phi2))
+
         plv_t = np.zeros(self.n_time)
-
-        # analytic signal
-        x_a, y_a = hilbert(np.real(x)), hilbert(np.real(y))
-
-        for i in range(n_steps):
-            start = step * i + 1
-            end = start + window_size
-            if end > self.n_time:
-                plv_t[start::] = self._plv(x_a[start::], y_a[start::])
-                break
-            plv_t[start:end] = self._plv(x_a[start:end], y_a[start:end])
-        return plv_t
+        for i in range(window_size, self.n_time):
+            plv_t[i] = np.abs(np.mean(phase_exp[i-window_size:i])) 
     
+        return plv_t
+
     def _entropy_evolution(self, states):
         assert len(states) == self.n_time
 
@@ -342,7 +324,7 @@ class Solver:
 
             exp_xs.append(exp_x)
         
-        if corr_name.lower() == "quantum":
+        if corr_name.lower() == "connected":
             if self.is_qutip_solver:
                 exp_xs_all = qt.expect(np.prod(self.sx), states)
             else: 
@@ -351,14 +333,23 @@ class Solver:
                     e_op = np.matmul(e_op, self.sx[i])
                 t, exp_xs_all = states.expectations(e_op, real=True)
         
-        for i in range(0, len(exp_xs)):
-            for j in range(i+1, len(exp_xs)):
+        if corr_name.lower() == "plv":
+            exp_sms = []
+            for i in range(self.n_tls):
+                if self.is_qutip_solver:
+                    exp_sm = qt.expect(self.sm[i], states)
+                else: 
+                    t, exp_sm = states.expectations(self.sx[i], real=True)
+                exp_sms.append(exp_sm)
+        
+        for i in range(0, self.n_tls):
+            for j in range(i+1, self.n_tls):
                 match corr_name.lower():
                     case "plv":
-                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._plv_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
+                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._plv_evolution(exp_sms[i], exp_sms[j], window_size=window_size, overlap=overlap)
                     case "pearson":
                         corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
-                    case "quantum":
+                    case "connected":
                         if self.is_qutip_solver:
                             q_corr = (exp_xs_all - exp_xs[i] * exp_xs[j]) / np.sqrt((qt.variance(self.sx[i], states) * qt.variance(self.sx[j], states)))
                         else: # handle TEMPO

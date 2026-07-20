@@ -361,10 +361,17 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
     fig, ax = plt.subplots(n_plots, 1, figsize=(16,4*n_plots))
 
     y_limits = {
-        "quantum": [-1, 1],
-        "pearson": [-1, 1],
-        "plv": [0, 1],
-        "entropy": [0, 1]
+        "connected": [-1.1, 1.1],
+        "pearson": [-1.1, 1.1],
+        "plv": [-0.1, 1.1],
+        "entropy": [-0.1, 1.1]
+    }
+
+    labels = {
+        "connected": "Connected Quantum Correlation",
+        "pearson": "Pearson Correlation",
+        "plv": "Phase Locking Value",
+        "entropy": "Mutual Information"
     }
 
     # plot phase diffs
@@ -388,8 +395,8 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
             leg_strs.append(label)
 
         ax[i+1].set_xlabel("Time [us]")
-        ax[i+1].set_ylabel(f"{corr_names[i].capitalize()}")
-        ax[i+1].set_title(f"{corr_names[i].capitalize()} Over Time")
+        ax[i+1].set_ylabel(f"{labels[corr_names[i]]}")
+        ax[i+1].set_title(f"{labels[corr_names[i]]} Over Time")
         ax[i+1].legend(leg_strs)
         ax[i+1].set_ylim(y_limits[corr_names[i]])
     plt.suptitle(f"{solver_name} Phase Difference and TLS Correlations", y=0.99)
