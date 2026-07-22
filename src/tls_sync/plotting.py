@@ -1,44 +1,26 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
+from .utils import find_max, find_min
 import numpy as np
 import os
 
-def find_max(mats):
-    """Return the maximum element among a list of matrices.
 
-    Parameters
-    ----------
-    mats : list of ndarray
-        A list of NumPy matrices whose maximum values are compared.
+def set_plot_format(scale=1, title_scale=1):
+    """Increase the default font sizes used by the plotting functions."""
+    plt.rcParams.update({
+        "font.size": 12 * scale,
+        "font.family": "serif",
+        "axes.titlesize": 16 * title_scale,
+        "axes.labelsize": 14 * scale,
+        "xtick.labelsize": 12 * scale,
+        "ytick.labelsize": 12 * scale,
+        "legend.fontsize": 11 * scale,
+        "figure.titlesize": 16 * title_scale,
+        "axes.titleweight": "normal",
+        "text.usetex": True,
+        "text.latex.preamble": r"\usepackage{braket}\usepackage{amsmath}\usepackage{charter}\usepackage{newtxtext,newtxmath}"
+    })
 
-    Returns
-    -------
-    float
-        The maximum value found in any of the input matrices.
-    """
-    res = np.max(mats[0])
-    for i in range(1, len(mats)):
-        res = max(res, np.max(mats[i]))
-    return res
-
-
-def find_min(mats):
-    """Return the minimum element among a list of matrices.
-
-    Parameters
-    ----------
-    mats : list of ndarray
-        A list of NumPy matrices whose minimum values are compared.
-
-    Returns
-    -------
-    float
-        The minimum value found in any of the input matrices.
-    """
-    res = np.min(mats[0])
-    for i in range(1, len(mats)):
-        res = min(res, np.min(mats[i]))
-    return res
 
 def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_map"):
     """Plot excitation maps for one or more datasets.
@@ -277,7 +259,110 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         os.makedirs("bctds_figures",exist_ok=True)
         plt.savefig(f"bctds_figures/{filename}.png")
 
-def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, filename="husimi_animation"):
+def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, method, omega_d=None, filename="husimi_snapshots", save=True):
+    """Plot selected Husimi Q-function snapshots for multiple solvers.
+
+    Parameters
+    ----------
+    Qts : list of ndarray
+        Time-series Husimi Q-function arrays for one or more datasets. Each element must
+        have shape (len(tlist), len(theta), len(phi)).
+    tlist : array_like
+        Time values corresponding to the first axis of each Q-function dataset.
+    snapshots : array_like
+        Time values at which snapshots should be extracted and plotted.
+    theta : array_like
+        Polar angle grid for the Husimi function.
+    phi : array_like
+        Azimuthal angle grid for the Husimi function.
+    labels : list of str, optional
+        Title labels for each solver subplot.
+    method : str, optional
+        Name of the simulation method used in the figure title.
+    omega_d : float, optional
+        Drive frequency value used in the figure title.
+    filename : str, optional
+        Output filename (without extension) used when saving the figure.
+    save : bool, optional
+        Whether to save the figure to the ``husimi_snapshots`` directory.
+    cmap : str, optional
+        Matplotlib colormap used for the plots.
+
+    Returns
+    -------
+    tuple
+        The matplotlib figure and axes objects for the generated snapshot plot.
+    """
+    snapshots = np.atleast_1d(np.asarray(snapshots))
+
+    for i in range(len(Qts)):
+        assert len(Qts[i]) == len(tlist)
+        assert np.shape(Qts[i][0]) == (len(theta), len(phi))
+
+    snapshot_indices = np.array([np.argmin(np.abs(tlist - snapshot)) for snapshot in snapshots], dtype=int)
+
+    n_plots = len(Qts)
+    n_snapshots = len(snapshots)
+    fig = plt.figure(figsize=(6 * n_plots + 2, 4 * n_snapshots + 1.5))
+    gs = fig.add_gridspec(n_snapshots + 1, n_plots, height_ratios=[1] * n_snapshots + [0.12])
+
+    axes = np.empty((n_snapshots, n_plots), dtype=object)
+    for row_idx in range(n_snapshots):
+        for col_idx in range(n_plots):
+            axes[row_idx, col_idx] = fig.add_subplot(gs[row_idx, col_idx])
+
+    cax = fig.add_subplot(gs[n_snapshots, :])
+
+    vmax = find_max(Qts)
+    vmin = find_min(Qts)
+
+    images = []
+    for row_idx, snap_idx in enumerate(snapshot_indices):
+        for col_idx in range(n_plots):
+            ax = axes[row_idx, col_idx]
+            image = ax.imshow(
+                Qts[col_idx][snap_idx],
+                origin='lower',
+                extent=[phi[0], phi[-1], theta[0], theta[-1]],
+                cmap="inferno",
+                vmin=vmin,
+                vmax=vmax,
+            )
+            ax.set_title(f"{labels[col_idx]} @ t={tlist[snap_idx]:.1f}")
+            ax.set_xlabel(r"$\phi$")
+            ax.set_ylabel(r"$\theta$")
+            ax.set_aspect('auto')
+            images.append(image)
+
+    fig.colorbar(images[-1], cax=cax, orientation="horizontal").set_label(r"$Q(\theta,\phi)$")
+    fig.suptitle(f"Husimi Q Snapshots ({method}) | Drive {omega_d} GHz")
+    plt.tight_layout()
+
+    if save:
+        os.makedirs("husimi_snapshots", exist_ok=True)
+        plt.savefig(f"husimi_snapshots/{filename}.png")
+
+    return fig, axes
+
+
+def husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels=None, method=None, omega_d=None, filename="husimi_snapshots", save=True, cmap="inferno"):
+    """Backward-compatible wrapper for plotting selected Husimi Q snapshots."""
+    return plot_husimi_snapshots(
+        Qts=Qts,
+        tlist=tlist,
+        snapshots=snapshots,
+        theta=theta,
+        phi=phi,
+        labels=labels,
+        method=method,
+        omega_d=omega_d,
+        filename=filename,
+        save=save,
+        cmap=cmap,
+    )
+
+
+def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, filename="husimi_animation"):
     """Generate and save a Husimi Q-function animation.
 
     Parameters
