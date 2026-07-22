@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
 from tls_sync.plotting import generate_husimi_anim
 
