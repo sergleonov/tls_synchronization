@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
-from tls_sync.plotting import plot_phase_evolution
+from tls_sync.plotting import plot_correlations
 
 
 def main():
-    tls_freqs = [3.75, 3.82]
+    tls_freqs = [3.75, 3.75]
     J = 0.02
     Omega_amp = 0.1
     lam = 0.002
@@ -14,7 +14,7 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 400
+    T_total = 1000
     T_drive = 100.0
     dt = 0.1
     n_tls = len(tls_freqs)
@@ -25,13 +25,13 @@ def main():
     Nb = 10
 
     # HEOM params
-    sd_type = "drude"
-    ohmicity = None
+    sd_type = "power"
+    ohmicity = 1.0
 
     # TEMPO params
     zeta = 1
     cutoff_type = "exponential"
-    tcut = 5.0
+    tcut = 2.5
     epsrel = 1e-4
 
 
@@ -93,14 +93,16 @@ def main():
                 tcut=tcut,
                 epsrel=epsrel)
     
+    window_size = 9
+    overlap = 6
     omega_d = tls_freqs[0]
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    solvers = [mark, tier, heom, tempo]
+    solvers = [mark, tier, heom]
     for solver in solvers:
-        phases, t = solver.phase_sim(omega_d)
-        plot_phase_evolution(phases, t, solver.omega_tls, solver._name, filename=f"phase_drive_{omega_d}_{solver}")
+        correlations, t = solver.plv_sim(omega_d, window_size, overlap)
+        plot_correlations(correlations, t, solver._name, correlation="PLV", filename=f"correlation_drive_{omega_d}_{solver}")
     
     print("Showing plots...")
     plt.show()

@@ -1,11 +1,8 @@
-import sys
-import os
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM, Lindblad
-from bctds_plots import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
+from tls_sync.solver import HEOM, Lindblad
+from tls_sync.plotting import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
 
 
 def main():
@@ -23,12 +20,12 @@ def main():
     max_depth = 5
     T_total = 1600
     T_drive = 100.0
-    dt = 0.5
+    dt = 0.1
     n_tls = len(tls_freqs)
     n_freqs = 300
 
-    sd_type = "power"
-    ohmicity = 3
+    sd_type = "drude"
+    ohmicity = None
 
     heom = HEOM(tls_freqs=tls_freqs, 
                 J=J, 
@@ -71,7 +68,7 @@ def main():
     os.makedirs("bctds_data", exist_ok=True)
     np.savez(f"bctds_data/data_{heom}_{args.tag}.npz",
             results_heom=(heom_exc, heom_sp), results_mark=(mark_exc, mark_sp),
-            fft_freqs_heom=fft_freqs_heom, fft_data_tempo=fft_data_heom,
+            fft_freqs_heom=fft_freqs_heom, fft_data_heom=fft_data_heom,
             fft_freqs_mark=fft_freqs_mark, fft_data_mark=fft_data_mark,
             tls_freqs=tls_freqs, 
             J=J, 

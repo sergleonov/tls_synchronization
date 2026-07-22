@@ -1,9 +1,7 @@
-import sys
 import glob
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM
-from bctds_plots import *
+from tls_sync.solver import HEOM
+from tls_sync.plotting import *
 
 def main():
     ohms = [0.5, 1, 3]

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
-from tls_sync.plotting import plot_phase_evolution
+from tls_sync.plotting import plot_phase_corr_evolution
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 400
+    T_total = 1000
     T_drive = 100.0
     dt = 0.1
     n_tls = len(tls_freqs)
@@ -31,7 +31,7 @@ def main():
     # TEMPO params
     zeta = 1
     cutoff_type = "exponential"
-    tcut = 5.0
+    tcut = 2.5
     epsrel = 1e-4
 
 
@@ -97,14 +97,13 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
+    corr_names = ["pearson", "plv", "connected", "entropy"]
     solvers = [mark, tier, heom, tempo]
+
     for solver in solvers:
-        phases, t = solver.phase_sim(omega_d)
-        plot_phase_evolution(phases, t, solver.omega_tls, solver._name, filename=f"phase_drive_{omega_d}_{solver}")
-    
-    print("Showing plots...")
-    plt.show()
-    
+        p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=150, overlap=149)
+        plot_phase_corr_evolution(p, c, corr_names, t, solver.omega_tls, solver.get_name(), filename=f"{solver.get_name()}_drive_{omega_d}_freqs_{tls_freqs[0]}_{tls_freqs[1]}")
+
 if __name__ == "__main__":
     status = main()
     sys.exit(status)

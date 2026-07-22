@@ -1,11 +1,9 @@
-import sys
 import os
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM
-from bctds_plots import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
+from tls_sync.solver import HEOM
+from tls_sync.plotting import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
 
 def main():
     ap = argparse.ArgumentParser(description="HEOM Simulation for single TLS")
@@ -22,7 +20,7 @@ def main():
     max_depth = 5
     T_total = 1600
     T_drive = 100.0
-    dt = 0.5
+    dt = 0.1
     n_tls = len(tls_freqs)
     n_freqs = 300
 

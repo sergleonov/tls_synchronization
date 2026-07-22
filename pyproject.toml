@@ -1,0 +1,28 @@
+[project]
+name = "tls_synchronization"
+version = "0.1.0"
+description = "TLS synchronization and open quantum systems simulation tools."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26.4",
+    "matplotlib>=3.10.8",
+    "scipy>=1.17.1",
+    "mpmath>=1.4.1",
+    "qutip>=5.2.3",
+    "oqupy>=0.5.0",
+    "tqdm>=4.68.3",
+]
+
+[project.urls]
+"Source" = "https://example.com"
+
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
