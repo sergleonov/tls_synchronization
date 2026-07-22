@@ -69,3 +69,40 @@ def compute_fft(sp_t, omega_d_vals, tlist, dt, n_time, fmax=0.1):
     fft_freqs = fft_freqs[:idx_max]
 
     return fft_freqs, fft_data  
+
+def find_max(mats):
+    """Return the maximum element among a list of matrices.
+
+    Parameters
+    ----------
+    mats : list of ndarray
+        A list of NumPy matrices whose maximum values are compared.
+
+    Returns
+    -------
+    float
+        The maximum value found in any of the input matrices.
+    """
+    res = np.max(mats[0])
+    for i in range(1, len(mats)):
+        res = max(res, np.max(mats[i]))
+    return res
+
+
+def find_min(mats):
+    """Return the minimum element among a list of matrices.
+
+    Parameters
+    ----------
+    mats : list of ndarray
+        A list of NumPy matrices whose minimum values are compared.
+
+    Returns
+    -------
+    float
+        The minimum value found in any of the input matrices.
+    """
+    res = np.min(mats[0])
+    for i in range(1, len(mats)):
+        res = min(res, np.min(mats[i]))
+    return res

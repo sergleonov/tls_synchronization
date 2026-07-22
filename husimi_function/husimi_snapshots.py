@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 from tls_sync import HEOM, Lindblad, TieredSolver, TEMPO
-from tls_sync.plotting import plot_husimi_anim
+from tls_sync.plotting import plot_husimi_snapshots, set_plot_format
 
 def main():
     tls_freqs = [3.75, 3.82]
@@ -13,9 +13,9 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 400
+    T_total = 300
     T_drive = 100.0
-    dt = 0.5
+    dt = 0.1
     n_tls = len(tls_freqs)
     n_freqs = 300
 
@@ -90,12 +90,12 @@ def main():
                 tcut=tcut,
                 epsrel=epsrel)
     
-    solvers = [mark, tier, heom, tempo]
+    solvers = [mark, heom]
     
     tls_idx = 0
     method = "ptrace"
 
-    omega_d = tls_freqs[0]
+    omega_d = 3.45
     theta = np.linspace(0, np.pi, 100)
     phi = np.linspace(0, 2*np.pi, 80)
     
@@ -105,11 +105,22 @@ def main():
         Qts.append(solver.husimi_sim(omega_d, theta, phi, method=method, tls_idx=tls_idx))
         labels.append(solver.get_name())
 
-    sd = ""
-    if sd_type == "power":
-        sd = sd_type + f"_ohm{ohmicity}"
-    filename = f"sim_omega_d{omega_d}_{method}_J{J}_Om{Omega_amp}_omega_c{omega_c}_cutoff{gamma_bath}_g{g}_{sd}_lam{lam}_dt{dt}_Nb{Nb}_Nk{Nk}_depth{max_depth}"
-    plot_husimi_anim(Qts=Qts, tlist=heom.tlist, theta=theta, phi=phi, T_drive=heom.T_drive, labels=labels, method=method, omega_d=omega_d, filename=filename)
+    filename = f"husimi_snap_omega_d{omega_d}_tls_{tls_freqs[0]}_{tls_freqs[1]}_mark_heom"
+
+    snapshots = np.linspace(0, T_total, 6)
+    set_plot_format(scale=1.5, title_scale=1.5)
+    plot_husimi_snapshots(
+        Qts=Qts,
+        tlist=heom.tlist,
+        snapshots=snapshots,
+        theta=theta,
+        phi=phi,
+        labels=labels,
+        method=method,
+        omega_d=omega_d,
+        filename=filename,
+    )
+
 
 if __name__ == "__main__":
     status = main()
