@@ -1,4 +1,4 @@
-from solver import Solver
+from tls_sync.solver import Solver
 import numpy as np
 from tqdm import tqdm
 import multiprocessing

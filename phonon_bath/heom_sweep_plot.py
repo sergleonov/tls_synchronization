@@ -1,7 +1,7 @@
 import glob
 import numpy as np
 import sys
-from tls_sync.solver import HEOM
+from tls_sync import HEOM
 from tls_sync.plotting import *
 
 def main():

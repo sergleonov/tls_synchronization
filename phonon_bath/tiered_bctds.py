@@ -2,7 +2,7 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-from tls_sync.solver import TieredSolver, Lindblad
+from tls_sync import TieredSolver, Lindblad
 from tls_sync.plotting import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
 
 

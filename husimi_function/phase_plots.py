@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+from tls_sync import HEOM, Lindblad, TieredSolver, TEMPO
 from tls_sync.plotting import plot_phase_evolution
 
 
