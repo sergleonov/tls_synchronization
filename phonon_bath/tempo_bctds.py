@@ -1,11 +1,9 @@
-import sys
 import os
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import TEMPO, Lindblad
-from bctds_plots import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
+from tls_sync.solver import TEMPO, Lindblad
+from tls_sync.plotting import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
 
 
 def main():

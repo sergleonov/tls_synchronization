@@ -1,56 +1,21 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
-from scipy.signal import windows
+import numpy as np
 import os
 
-def smooth_envelope(amplitude, fraction=0.02):
-    N = len(amplitude)
-    win_len = int(max(3, min(N-1, np.round(N * fraction))))
-    if win_len % 2 == 0:
-        win_len += 1
-    kernel = np.ones(win_len) / win_len
-    return np.convolve(amplitude, kernel, mode='same')
-
-def compute_fft(sp_t, omega_d_vals, tlist, dt, n_time, fmax=0.1): 
-
-    window_fn = windows.hann(n_time)
-    window_rms = np.sqrt(np.mean(window_fn**2))
-    N_pad = 2**13
-
-    fft_data = []
-
-    for idx, omega_d in enumerate(omega_d_vals):
-        Splus_t = sp_t[idx, :]
-
-        LO = np.exp(-1j * omega_d * tlist)
-        demod = Splus_t * LO
-
-        phi = np.angle(demod)
-        amp = np.abs(demod)
-        env = smooth_envelope(amp)
-
-        phi_weighted = phi * env
-        phi_win = phi_weighted * window_fn
-
-        fft_vals = np.fft.rfft(phi_win, n=N_pad)
-        fft_amp = np.abs(fft_vals) / window_rms
-
-        fft_data.append(fft_amp)
-
-    fft_data = np.array(fft_data)
-    fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
-
-    # limit the plot to observe the features
-    idx_max = np.searchsorted(fft_freqs, fmax) 
-
-    fft_data = fft_data[:, :idx_max]
-    fft_freqs = fft_freqs[:idx_max]
-
-    return fft_freqs, fft_data  
-
-# ------------- Plots -------------
 def find_max(mats):
+    """Return the maximum element among a list of matrices.
+
+    Parameters
+    ----------
+    mats : list of ndarray
+        A list of NumPy matrices whose maximum values are compared.
+
+    Returns
+    -------
+    float
+        The maximum value found in any of the input matrices.
+    """
     res = np.max(mats[0])
     for i in range(1, len(mats)):
         res = max(res, np.max(mats[i]))
@@ -58,12 +23,41 @@ def find_max(mats):
 
 
 def find_min(mats):
+    """Return the minimum element among a list of matrices.
+
+    Parameters
+    ----------
+    mats : list of ndarray
+        A list of NumPy matrices whose minimum values are compared.
+
+    Returns
+    -------
+    float
+        The minimum value found in any of the input matrices.
+    """
     res = np.min(mats[0])
     for i in range(1, len(mats)):
         res = min(res, np.min(mats[i]))
     return res
 
 def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_map"):
+    """Plot excitation maps for one or more datasets.
+
+    Parameters
+    ----------
+    res_exc : list of ndarray
+        A list of 2D excitation arrays indexed by drive frequency and time.
+    omega_d_vals : array_like
+        Drive frequency values corresponding to the first axis of each excitation array.
+    tlist : array_like
+        Time values corresponding to the second axis of each excitation array.
+    labels : list of str
+        Title labels for each subplot.
+    save : bool, optional
+        Whether to save the figure to the ``bctds_figures`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     n_plots = len(res_exc)
     # check shape
     for i in range(n_plots):
@@ -101,6 +95,23 @@ def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_
         plt.savefig(f"bctds_figures/{filename}.png")
 
 def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map"):
+    """Plot sigma plus excitation maps for one or more datasets.
+
+    Parameters
+    ----------
+    res_sp : list of ndarray
+        A list of expectation values of total excitation indexed by drive frequency and time.
+    omega_d_vals : array_like
+        Drive frequency values corresponding to the first axis of each data array.
+    tlist : array_like
+        Time values corresponding to the second axis of each data array.
+    labels : list of str
+        Title labels for each subplot.
+    save : bool, optional
+        Whether to save the figure to the ``bctds_figures`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     n_plots = len(res_sp)
     # check shape
     for i in range(n_plots):
@@ -138,6 +149,25 @@ def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map
         plt.savefig(f"bctds_figures/{filename}.png")
 
 def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filename="diff_map"):
+    """Plot difference maps comparing total and sigma plus excitation data across label pairs.
+
+    Parameters
+    ----------
+    res_exc : list of ndarray
+        A list of 2D excitation arrays indexed by drive frequency and time.
+    res_sp : list of ndarray
+        A list of complex spin expectation arrays indexed by drive frequency and time.
+    omega_d_vals : array_like
+        Drive frequency values corresponding to the first axis of each data array.
+    tlist : array_like
+        Time values corresponding to the second axis of each data array.
+    labels : list of str
+        Labels used to name each dataset and each difference plot.
+    save : bool, optional
+        Whether to save the figure to the ``bctds_figures`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
 
     assert(len(res_exc) == len(labels))
     assert(len(res_sp) == len(labels))
@@ -189,6 +219,25 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
         plt.savefig(f"bctds_figures/{filename}.png")
 
 def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True, filename="fft_map"):
+    """Plot FFT magnitude maps across drive frequency and spectral frequency.
+
+    Parameters
+    ----------
+    fft_freqs : list of array_like
+        A list of frequency grids for each FFT dataset.
+    fft_data : list of ndarray
+        A list of 2D FFT magnitude arrays indexed by drive frequency and FFT frequency.
+    omega_d_vals : array_like
+        Drive frequency values corresponding to the first axis of each FFT array.
+    omega_tls : array_like
+        Bare two-level system eigenfrequencies plotted as reference lines.
+    labels : list of str
+        Title labels for each subplot.
+    save : bool, optional
+        Whether to save the figure to the ``bctds_figures`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     n_plots = len(fft_freqs)
     # check shape
     for i in range(n_plots):
@@ -229,6 +278,30 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         plt.savefig(f"bctds_figures/{filename}.png")
 
 def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, filename="husimi_animation"):
+    """Generate and save a Husimi Q-function animation.
+
+    Parameters
+    ----------
+    Qts : list of ndarray
+        Time-series Husimi Q-function arrays for one or more datasets. Each element must
+        have shape (len(tlist), len(theta), len(phi)).
+    tlist : array_like
+        List of time points corresponding to the first axis of each Q-function dataset.
+    theta : array_like
+        Polar angle grid for the Husimi function.
+    phi : array_like
+        Azimuthal angle grid for the Husimi function.
+    T_drive : float
+        Drive duration used to label frames as DRIVE ON/OFF.
+    labels : list of str
+        Title labels for each subplot.
+    method : str
+        Name of the simulation method used in the animation title.
+    omega_d : float
+        Drive frequency value used in the animation title.
+    filename : str, optional
+        Output filename (without extension) used when saving the animation.
+    """
     for i in range(len(Qts)):
         assert len(Qts[i]) == len(tlist)
         assert np.shape(Qts[i][0]) == (len(theta), len(phi))
@@ -308,6 +381,23 @@ def generate_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_
     print("Animation saved.")
 
 def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filename="phase_plot"):
+    """Plot TLS phase evolution and pairwise phase differences over time.
+
+    Parameters
+    ----------
+    phases : list of ndarray
+        Phase trajectories for each TLS.
+    tlist : array_like
+        Time values corresponding to the phase trajectories.
+    tls_freqs : array_like
+        TLS frequencies used for legend labels.
+    solver_name : str
+        Name of the solver used, shown in the figure title.
+    save : bool, optional
+        Whether to save the plot to the ``phase_plots`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     fig, ax = plt.subplots(1, 2, figsize=(6*2,6))
 
     for i in range(len(phases)):
@@ -337,6 +427,23 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filen
         plt.savefig(f"phase_plots/{filename}.png")
 
 def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, filename="correlations_plot"):
+    """Plot correlation time series for one or more TLS pairs.
+
+    Parameters
+    ----------
+    correlations : dict
+        Mapping of pair labels to correlation trajectories.
+    tlist : array_like
+        Time values corresponding to the correlation series.
+    solver_name : str
+        Name of the solver used, shown in the figure title.
+    corr_name : str
+        Correlation type name used in axis labels and title.
+    save : bool, optional
+        Whether to save the plot to the ``correlation_plots`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     fig, ax = plt.subplots(1, 1, figsize=(6,6))
 
     lgd_strs = []
@@ -356,6 +463,27 @@ def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, fi
         plt.savefig(f"correlation_plots/{corr_name}_{filename}.png")
 
 def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs, solver_name, filename, save=True):
+    """Plot phase differences and multiple correlation evolutions in one figure.
+
+    Parameters
+    ----------
+    phases : list of ndarray
+        Phase trajectories for each TLS.
+    correlations : list of dict
+        A list of correlation dictionaries, one per correlation type.
+    corr_names : list of str
+        Names of the correlation types in ``correlations``.
+    tlist : array_like
+        Shared time values for phase and correlation plots.
+    tls_freqs : array_like
+        TLS frequencies used for legend labels.
+    solver_name : str
+        Solver name shown in the figure titles.
+    filename : str
+        Output filename (without extension) used when saving the figure.
+    save : bool, optional
+        Whether to save the figure to the ``correlation_plots`` directory (default is True).
+    """
     n_plots = len(correlations) + 1
 
     fig, ax = plt.subplots(n_plots, 1, figsize=(16,4*n_plots))
@@ -408,6 +536,23 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
         plt.savefig(f"correlation_plots/corrs_{filename}.png")
 
 def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
+    """Plot a correlation sweep as a function of coupling strength and frequency ratio.
+
+    Parameters
+    ----------
+    corr_map : ndarray
+        2D correlation map indexed by J strength and frequency ratio.
+    J_list : array_like
+        Coupling strength values for the vertical axis.
+    freq_ratios : array_like
+        Frequency ratio values for the horizontal axis.
+    solver_name : str
+        Name of the solver used, shown in the plot title.
+    save : bool, optional
+        Whether to save the figure to the ``correlation_plots`` directory (default is True).
+    filename : str, optional
+        The output filename (without extension) used when saving the figure.
+    """
     gridspec = {'width_ratios': [1, 0.1]} 
     fig, ax = plt.subplots(1, 2, figsize=(6, 8), gridspec_kw=gridspec)
 

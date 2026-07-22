@@ -1,9 +1,7 @@
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM, Lindblad, TieredSolver, TEMPO
-from bctds_plots import plot_corr_J_sweep
+from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+from tls_sync.plotting import plot_corr_J_sweep
 
 
 def main():

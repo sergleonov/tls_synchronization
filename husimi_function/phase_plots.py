@@ -1,11 +1,7 @@
-import sys
-import os
-import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM, Lindblad, TieredSolver, TEMPO
-from bctds_plots import plot_phase_evolution
+from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+from tls_sync.plotting import plot_phase_evolution
 
 
 def main():

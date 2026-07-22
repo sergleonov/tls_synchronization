@@ -1,12 +1,6 @@
-import sys
-import os
-import argparse
-import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM, Lindblad, TieredSolver, TEMPO
-from bctds_plots import generate_husimi_anim
-
+from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+from tls_sync.plotting import generate_husimi_anim
 
 def main():
     tls_freqs = [3.75, 3.82]
@@ -98,9 +92,9 @@ def main():
     solvers = [mark, heom]
     
     tls_idx = 0
-    method = "ptrace"
+    method = "diff"
 
-    omega_d = tls_freqs[0]
+    omega_d = 3.75
     theta = np.linspace(0, np.pi, 100)
     phi = np.linspace(0, 2*np.pi, 80)
     

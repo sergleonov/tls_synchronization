@@ -1,15 +1,11 @@
-import sys
-import os
-import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-sys.path.append("../")
-from solvers import HEOM, Lindblad, TieredSolver, TEMPO
-from bctds_plots import plot_correlations
+from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+from tls_sync.plotting import plot_correlations
 
 
 def main():
-    tls_freqs = [3.75, 3.82]
+    tls_freqs = [3.75, 3.75]
     J = 0.02
     Omega_amp = 0.1
     lam = 0.002
@@ -29,8 +25,8 @@ def main():
     Nb = 10
 
     # HEOM params
-    sd_type = "drude"
-    ohmicity = None
+    sd_type = "power"
+    ohmicity = 1.0
 
     # TEMPO params
     zeta = 1
@@ -103,7 +99,7 @@ def main():
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
-    solvers = [mark, tier, heom, tempo]
+    solvers = [mark, tier, heom]
     for solver in solvers:
         correlations, t = solver.plv_sim(omega_d, window_size, overlap)
         plot_correlations(correlations, t, solver._name, correlation="PLV", filename=f"correlation_drive_{omega_d}_{solver}")
