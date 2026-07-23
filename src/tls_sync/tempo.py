@@ -168,7 +168,7 @@ class TEMPO(Solver):
             return exc_tempo, sp_tempo, dynamics
         return exc_tempo, sp_tempo
     
-    def run(self):
+    def run(self, store_states=False):
         """Execute TEMPO simulations across all configured drive frequencies."""
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
@@ -177,18 +177,27 @@ class TEMPO(Solver):
 
         exc_tempo = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_tempo  = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
+        states_tempo = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
 
         worker = partial(self._worker,
-                         process_tensor=process_tensor)
+                         process_tensor=process_tensor,
+                         store_states=store_states)
 
         with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+            if store_states:
+                for idx, (exc_res, sp_res, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                        total=len(self.omega_d_vals),
+                                                        desc="TEMPO Simulations")):
+                    exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
+                    states_tempo[idx, :] = states.states if hasattr(states, "states") else states
+                return (exc_tempo, sp_tempo, states_tempo)
+            else:
+                for idx, (exc_res, sp_res) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                        total=len(self.omega_d_vals),
+                                                        desc="TEMPO Simulations")):
+                    exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
 
-            for idx, (exc_res, sp_res) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="TEMPO Simulations")):
-                exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
-
-            return (exc_tempo, sp_tempo)
+                return (exc_tempo, sp_tempo)
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for a TEMPO run at a given drive frequency."""
