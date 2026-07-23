@@ -324,6 +324,27 @@ class Solver:
         for i in range(window_size, self.n_time):
             C_t[i] = np.corrcoef(x[i-window_size:i], y[i-window_size:i])[1, 0]
         return C_t
+
+    def final_pearson_from_states(self, states, window_size):
+        """Compute the final rolling Pearson correlation from a state trajectory."""
+        exp_xs = []
+        for i in range(self.n_tls):
+            if self.is_qutip_solver:
+                exp_x = qt.expect(self.sx[i], states)
+            else:
+                t, exp_x = states.expectations(self.sx[i], real=True)
+            exp_xs.append(exp_x)
+
+        if self.n_tls < 2:
+            raise ValueError("Pearson correlation requires at least two TLSs")
+
+        x = np.asarray(exp_xs[0])
+        y = np.asarray(exp_xs[1])
+
+        if len(x) < window_size:
+            raise ValueError("window_size cannot exceed the number of stored states")
+
+        return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
     
     def _plv_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling phase locking value between two phase signals."""
@@ -425,7 +446,6 @@ class Solver:
                 exp_x = qt.expect(self.sx[i], states)
             else:
                 t, exp_x = states.expectations(self.sx[i], real=True)
-
             exp_xs.append(exp_x)
         
         if corr_name.lower() == "connected":
