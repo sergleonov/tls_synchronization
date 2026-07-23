@@ -278,9 +278,9 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tl
     snapshots : array_like
         Time values at which snapshots should be extracted and plotted.
     theta : array_like
-        Polar angle grid for the Husimi function.
-    phi : array_like
         Azimuthal angle grid for the Husimi function.
+    phi : array_like
+        Polar angle grid for the Husimi function.
     labels : list of str, optional
         Title labels for each solver subplot.
     method : str, optional
@@ -380,9 +380,9 @@ def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, f
     tlist : array_like
         List of time points corresponding to the first axis of each Q-function dataset.
     theta : array_like
-        Polar angle grid for the Husimi function.
-    phi : array_like
         Azimuthal angle grid for the Husimi function.
+    phi : array_like
+        Polar angle grid for the Husimi function.
     T_drive : float
         Drive duration used to label frames as DRIVE ON/OFF.
     labels : list of str
