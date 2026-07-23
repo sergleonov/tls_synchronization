@@ -13,7 +13,7 @@ def main():
     T = 0.5
     Nk = 3
     max_depth = 5
-    T_total = 300
+    T_total = 400
     T_drive = 100.0
     dt = 0.1
     n_tls = len(tls_freqs)
@@ -95,7 +95,7 @@ def main():
     tls_idx = 0
     method = "ptrace"
 
-    omega_d = 3.45
+    omega_d = 3.75
     theta = np.linspace(0, np.pi, 100)
     phi = np.linspace(0, 2*np.pi, 80)
     
@@ -105,10 +105,13 @@ def main():
         Qts.append(solver.husimi_sim(omega_d, theta, phi, method=method, tls_idx=tls_idx))
         labels.append(solver.get_name())
 
-    filename = f"husimi_snap_omega_d{omega_d}_tls_{tls_freqs[0]}_{tls_freqs[1]}_mark_heom"
+    
 
-    snapshots = np.linspace(0, T_total, 6)
-    set_plot_format(scale=1.5, title_scale=1.5)
+    set_plot_format(scale=2, title_scale=2)
+
+    # first half
+    snapshots = np.linspace(0, T_total/2-50, 4)
+    filename = f"part1_husimi_snap_omega_d{omega_d}_tls_{tls_freqs[0]}_{tls_freqs[1]}_mark_heom"
     plot_husimi_snapshots(
         Qts=Qts,
         tlist=heom.tlist,
@@ -116,11 +119,24 @@ def main():
         theta=theta,
         phi=phi,
         labels=labels,
-        method=method,
         omega_d=omega_d,
+        tls_freqs=tls_freqs,
         filename=filename,
     )
-
+    # second half
+    snapshots = np.linspace(T_total/2, T_total-50, 4)
+    filename = f"part2_husimi_snap_omega_d{omega_d}_tls_{tls_freqs[0]}_{tls_freqs[1]}_mark_heom"
+    plot_husimi_snapshots(
+            Qts=Qts,
+            tlist=heom.tlist,
+            snapshots=snapshots,
+            theta=theta,
+            phi=phi,
+            labels=labels,
+            omega_d=omega_d,
+            tls_freqs=tls_freqs,
+            filename=filename,
+        )
 
 if __name__ == "__main__":
     status = main()
