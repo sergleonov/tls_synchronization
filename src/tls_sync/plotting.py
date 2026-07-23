@@ -9,7 +9,8 @@ def set_plot_format(scale=1, title_scale=1):
     """Increase the default font sizes used by the plotting functions."""
     plt.rcParams.update({
         "font.size": 12 * scale,
-        "font.family": "serif",
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Helvetica"],
         "axes.titlesize": 16 * title_scale,
         "axes.labelsize": 14 * scale,
         "xtick.labelsize": 12 * scale,
@@ -18,7 +19,12 @@ def set_plot_format(scale=1, title_scale=1):
         "figure.titlesize": 16 * title_scale,
         "axes.titleweight": "normal",
         "text.usetex": True,
-        "text.latex.preamble": r"\usepackage{braket}\usepackage{amsmath}\usepackage{charter}\usepackage{newtxtext,newtxmath}"
+        "text.latex.preamble": (
+            r"\usepackage{braket}"
+            r"\usepackage{amsmath}"
+            r"\usepackage{sfmath}"
+            r"\renewcommand{\familydefault}{\sfdefault}"
+        ),
     })
 
 
@@ -259,7 +265,7 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
         os.makedirs("bctds_figures",exist_ok=True)
         plt.savefig(f"bctds_figures/{filename}.png")
 
-def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, method, omega_d=None, filename="husimi_snapshots", save=True):
+def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tls_freqs, filename="husimi_snapshots", save=True):
     """Plot selected Husimi Q-function snapshots for multiple solvers.
 
     Parameters
@@ -272,9 +278,9 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, method, ome
     snapshots : array_like
         Time values at which snapshots should be extracted and plotted.
     theta : array_like
-        Polar angle grid for the Husimi function.
-    phi : array_like
         Azimuthal angle grid for the Husimi function.
+    phi : array_like
+        Polar angle grid for the Husimi function.
     labels : list of str, optional
         Title labels for each solver subplot.
     method : str, optional
@@ -303,7 +309,7 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, method, ome
 
     n_plots = len(Qts)
     n_snapshots = len(snapshots)
-    fig = plt.figure(figsize=(6 * n_plots + 2, 4 * n_snapshots + 1.5))
+    fig = plt.figure(figsize=(8 * n_plots + 2, 5 * n_snapshots + 1.5))
     gs = fig.add_gridspec(n_snapshots + 1, n_plots, height_ratios=[1] * n_snapshots + [0.12])
 
     axes = np.empty((n_snapshots, n_plots), dtype=object)
@@ -335,7 +341,8 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, method, ome
             images.append(image)
 
     fig.colorbar(images[-1], cax=cax, orientation="horizontal").set_label(r"$Q(\theta,\phi)$")
-    fig.suptitle(f"Husimi Q Snapshots ({method}) | Drive {omega_d} GHz")
+    fig.suptitle(f"Husimi Q Snapshots | Drive {omega_d} GHz\n"
+                 + f"TLSs: {tls_freqs[0]} GHz and {tls_freqs[1]} GHz")
     plt.tight_layout()
 
     if save:
@@ -373,9 +380,9 @@ def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, f
     tlist : array_like
         List of time points corresponding to the first axis of each Q-function dataset.
     theta : array_like
-        Polar angle grid for the Husimi function.
-    phi : array_like
         Azimuthal angle grid for the Husimi function.
+    phi : array_like
+        Polar angle grid for the Husimi function.
     T_drive : float
         Drive duration used to label frames as DRIVE ON/OFF.
     labels : list of str
