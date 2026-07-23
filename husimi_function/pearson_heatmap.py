@@ -19,7 +19,7 @@ def main():
     T_drive = 100.0
     dt = 0.1
     n_tls = 2
-    n_freqs = 5
+    n_freqs = 50
 
     sd_type = "drude"
     ohmicity = None
