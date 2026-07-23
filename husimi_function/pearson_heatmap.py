@@ -14,7 +14,7 @@ def main():
     gamma_bath = 0.05
     T = 0.5
     Nk = 3
-    max_depth = 50
+    max_depth = 5
     T_total = 400
     T_drive = 100.0
     dt = 0.1
