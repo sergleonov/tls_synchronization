@@ -100,6 +100,25 @@ def main():
 
     plt.tight_layout()
     plt.savefig("pearson_heatmap.png")
+    np.savez(
+        f"pearson_heatmap_data.npz", 
+        heatmaps=heatmaps, 
+        freq_list=freq_list,
+        J=J, 
+        Omega_amp=Omega_amp, 
+        lam=lam, 
+        gamma_bath=gamma_bath, 
+        T=T, 
+        Nk=Nk, 
+        max_depth=max_depth, 
+        T_total=T_total, 
+        T_drive=T_drive, 
+        dt=dt, 
+        n_tls=n_tls,
+        n_freqs=n_freqs, 
+        ohmicity=ohmicity,
+        sd_type=sd_type
+    )
     plt.show()
 
 
