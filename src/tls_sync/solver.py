@@ -332,8 +332,8 @@ class Solver:
             if self.is_qutip_solver:
                 exp_x = qt.expect(self.sx[i], states)
             else:
-                t, exp_x = states.expectations(self.sx[i], real=True)
-            exp_xs.append(exp_x)
+                t, exp_x = states.expectations(self.sx[i])
+            exp_xs.append(np.real(exp_x))
 
         if self.n_tls < 2:
             raise ValueError("Pearson correlation requires at least two TLSs")
@@ -463,7 +463,7 @@ class Solver:
                 if self.is_qutip_solver:
                     exp_sm = qt.expect(self.sm[i], states)
                 else: 
-                    t, exp_sm = states.expectations(self.sx[i], real=True)
+                    t, exp_sm = states.expectations(self.sx[i])
                 exp_sms.append(exp_sm)
         
         for i in range(0, self.n_tls):
@@ -472,7 +472,7 @@ class Solver:
                     case "plv":
                         corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._plv_evolution(exp_sms[i], exp_sms[j], window_size=window_size, overlap=overlap)
                     case "pearson":
-                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
+                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(np.real(exp_xs[i]), np.real(exp_xs[j]), window_size=window_size, overlap=overlap)
                     case "connected":
                         if self.is_qutip_solver:
                             q_corr = (exp_xs_all - exp_xs[i] * exp_xs[j]) / np.sqrt((qt.variance(self.sx[i], states) * qt.variance(self.sx[j], states)))
