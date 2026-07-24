@@ -5,12 +5,11 @@ import sys
 from tls_sync import HEOM, Lindblad
 from tls_sync.plotting import set_plot_format
 
-
 def main():
     omega1 = 3.75
     J = 0.02
     Omega_amp = 0.1
-    g = 0.02
+    lam = 0.02
     gamma_bath = 0.05
     T = 0.5
     Nk = 3
@@ -19,7 +18,7 @@ def main():
     T_drive = 100.0
     dt = 0.1
     n_tls = 2
-    n_freqs = 50
+    n_freqs = 30
 
     sd_type = "drude"
     ohmicity = None
@@ -38,7 +37,7 @@ def main():
             tls_freqs=tls_freqs,
             J=J,
             Omega_amp=Omega_amp,
-            lam=g,
+            lam=lam,
             gamma_bath=gamma_bath,
             T=T,
             Nk=Nk,
@@ -55,7 +54,7 @@ def main():
             tls_freqs=tls_freqs,
             J=J,
             Omega_amp=Omega_amp,
-            lam=g,
+            lam=lam,
             T=T,
             T_total=T_total,
             T_drive=T_drive,
@@ -80,8 +79,8 @@ def main():
                 )
             heatmaps[solver_name].append(np.asarray(corr_values))
 
-    set_plot_format(2, 2)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    set_plot_format(1.25, 1.25)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
     for ax, (solver_name, heatmap) in zip(axes, heatmaps.items()):
         data = np.vstack(heatmap)
         image = ax.imshow(
@@ -94,9 +93,10 @@ def main():
             vmax=1,
         )
         ax.set_title(solver_name)
-        ax.set_xlabel(r"Drive frequency $\omega_d$")
-        ax.set_ylabel(r"TLS frequency $\omega_2$")
+        ax.set_xlabel(r"$\omega_d$", fontsize=22)
+        ax.set_ylabel(r"$\omega_2$", fontsize=22)
         fig.colorbar(image, ax=ax, orientation="horizontal")
+    fig.suptitle(f"Final Time Pearson Coefficient Heatmaps")
 
     plt.tight_layout()
     plt.savefig("pearson_heatmap.png")
