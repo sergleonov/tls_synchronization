@@ -18,7 +18,7 @@ def main():
     T_drive = 100.0
     dt = 0.1
     n_tls = 2
-    n_freqs = 30
+    n_freqs = 49
 
     sd_type = "drude"
     ohmicity = None
@@ -95,6 +95,8 @@ def main():
         ax.set_title(solver_name)
         ax.set_xlabel(r"$\omega_d$", fontsize=22)
         ax.set_ylabel(r"$\omega_2$", fontsize=22)
+        ax.vlines(x=omega1, color="c", ymin=freq_list[0], ymax=freq_list[-1], linestyle='--', linewidth=1)
+        ax.hlines(y=omega1, color="c", xmin=freq_list[0], xmax=freq_list[-1], linestyle='--', linewidth=1)
         fig.colorbar(image, ax=ax, orientation="horizontal")
     fig.suptitle(f"Final Time Pearson Coefficient Heatmaps")
 
