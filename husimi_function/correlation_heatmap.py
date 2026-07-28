@@ -1,11 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
 import sys
 
 from tls_sync import HEOM, Lindblad
 from tls_sync.plotting import set_plot_format
 
-def main():
+def parse_args(args: list[str] | None = None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "corr_name",
+        type=str,
+        help="Name of the correlation metric.",
+    )
+    return parser.parse_args(args)
+
+def main(corr_name: str):
     omega1 = 3.75
     J = 0.02
     Omega_amp = 0.1
@@ -74,7 +84,7 @@ def main():
                 corr_values.append(
                     solver.final_corr_from_states(
                         list(states[drive_idx]),
-                        corr_name="pearson",
+                        corr_name=corr_name,
                         window_size=window_size
                     )
                 )
@@ -99,12 +109,12 @@ def main():
         ax.vlines(x=omega1, color="c", ymin=freq_list[0], ymax=freq_list[-1], linestyle='--', linewidth=1)
         ax.hlines(y=omega1, color="c", xmin=freq_list[0], xmax=freq_list[-1], linestyle='--', linewidth=1)
         fig.colorbar(image, ax=ax, orientation="horizontal")
-    fig.suptitle(f"Final Time Pearson Coefficient Heatmaps")
+    fig.suptitle(f"Final Time {corr_name.capitalize() if corr_name == "pearson" else corr_name.upper()} Coefficient Heatmaps")
 
     plt.tight_layout()
-    plt.savefig("pearson_heatmap.png")
+    plt.savefig(f"{corr_name}_heatmap.png")
     np.savez(
-        f"pearson_heatmap_data.npz", 
+        f"{corr_name}_heatmap_data.npz", 
         heatmaps=heatmaps, 
         freq_list=freq_list,
         J=J, 
@@ -124,8 +134,7 @@ def main():
     )
     plt.show()
 
-
-
 if __name__ == "__main__":
-    status = main()
+    args = parse_args()
+    status = main(corr_name=args.corr_name.lower())
     sys.exit(status)

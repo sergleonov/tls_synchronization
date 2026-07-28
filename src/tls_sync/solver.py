@@ -331,9 +331,6 @@ class Solver:
         if self.n_tls < 2:
             raise ValueError("Correlation requires at least two TLSs")
 
-        if len(x) < window_size:
-            raise ValueError("window_size cannot exceed the number of stored states")
-
         if corr_name.lower() == "plv":
             exp_sms = []
             for i in range(self.n_tls):
@@ -346,6 +343,9 @@ class Solver:
             y = np.asarray(exp_sms[1])
             phi1, phi2 = np.angle(x), np.angle(y)
             phase_exp = np.exp(1j * (phi1 - phi2))
+
+            if len(x) < window_size:
+                raise ValueError("window_size cannot exceed the number of stored states")
     
             return np.abs(np.mean(phase_exp[-window_size:])) 
 
@@ -359,6 +359,9 @@ class Solver:
                 exp_xs.append(np.real(exp_x))
             x = np.asarray(exp_xs[0])
             y = np.asarray(exp_xs[1])
+
+            if len(x) < window_size:
+                raise ValueError("window_size cannot exceed the number of stored states")
 
             return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
     
