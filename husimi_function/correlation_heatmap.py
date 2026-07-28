@@ -100,7 +100,7 @@ def main(corr_name: str):
             extent=[freq_list[0], freq_list[-1], freq_list[0], freq_list[-1]],
             aspect="auto",
             cmap="inferno",
-            vmin=-1,
+            vmin=-1 if corr_name == "pearson" else 0,
             vmax=1,
         )
         ax.set_title(solver_name)
