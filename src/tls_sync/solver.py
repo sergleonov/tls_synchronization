@@ -325,26 +325,42 @@ class Solver:
             C_t[i] = np.corrcoef(x[i-window_size:i], y[i-window_size:i])[1, 0]
         return C_t
 
-    def final_pearson_from_states(self, states, window_size):
+    def final_corr_from_states(self, states, corr_name, window_size):
         """Compute the final rolling Pearson correlation from a state trajectory."""
-        exp_xs = []
-        for i in range(self.n_tls):
-            if self.is_qutip_solver:
-                exp_x = qt.expect(self.sx[i], states)
-            else:
-                t, exp_x = states.expectations(self.sx[i])
-            exp_xs.append(np.real(exp_x))
 
         if self.n_tls < 2:
-            raise ValueError("Pearson correlation requires at least two TLSs")
-
-        x = np.asarray(exp_xs[0])
-        y = np.asarray(exp_xs[1])
+            raise ValueError("Correlation requires at least two TLSs")
 
         if len(x) < window_size:
             raise ValueError("window_size cannot exceed the number of stored states")
 
-        return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
+        if corr_name.lower() == "plv":
+            exp_sms = []
+            for i in range(self.n_tls):
+                if self.is_qutip_solver:
+                    exp_sm = qt.expect(self.sm[i], states)
+                else: 
+                    t, exp_sm = states.expectations(self.sm[i])
+                exp_sms.append(exp_sm)
+            x = np.asarray(exp_sms[0])
+            y = np.asarray(exp_sms[1])
+            phi1, phi2 = np.angle(x), np.angle(y)
+            phase_exp = np.exp(1j * (phi1 - phi2))
+    
+            return np.abs(np.mean(phase_exp[-window_size:])) 
+
+        if corr_name.lower() == "pearson":
+            exp_xs = []
+            for i in range(self.n_tls):
+                if self.is_qutip_solver:
+                    exp_x = qt.expect(self.sx[i], states)
+                else:
+                    t, exp_x = states.expectations(self.sx[i])
+                exp_xs.append(np.real(exp_x))
+            x = np.asarray(exp_xs[0])
+            y = np.asarray(exp_xs[1])
+
+            return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
     
     def _plv_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling phase locking value between two phase signals."""
@@ -463,7 +479,7 @@ class Solver:
                 if self.is_qutip_solver:
                     exp_sm = qt.expect(self.sm[i], states)
                 else: 
-                    t, exp_sm = states.expectations(self.sx[i])
+                    t, exp_sm = states.expectations(self.sm[i])
                 exp_sms.append(exp_sm)
         
         for i in range(0, self.n_tls):

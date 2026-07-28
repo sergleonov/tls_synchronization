@@ -72,9 +72,10 @@ def main():
             corr_values = []
             for drive_idx in range(len(freq_list)):
                 corr_values.append(
-                    solver.final_pearson_from_states(
+                    solver.final_corr_from_states(
                         list(states[drive_idx]),
-                        window_size=window_size,
+                        corr_name="pearson",
+                        window_size=window_size
                     )
                 )
             heatmaps[solver_name].append(np.asarray(corr_values))
