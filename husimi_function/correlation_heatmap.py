@@ -109,7 +109,7 @@ def main(corr_name: str):
         ax.vlines(x=omega1, color="c", ymin=freq_list[0], ymax=freq_list[-1], linestyle='--', linewidth=1)
         ax.hlines(y=omega1, color="c", xmin=freq_list[0], xmax=freq_list[-1], linestyle='--', linewidth=1)
         fig.colorbar(image, ax=ax, orientation="horizontal")
-    fig.suptitle(f"Final Time {corr_name.capitalize() if corr_name == "pearson" else corr_name.upper()} Coefficient Heatmaps")
+    fig.suptitle(f"{corr_name.capitalize() if corr_name == "pearson" else corr_name.upper()} Correlation Coefficient Heatmaps")
 
     plt.tight_layout()
     plt.savefig(f"{corr_name}_heatmap.png")
