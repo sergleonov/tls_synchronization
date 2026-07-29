@@ -103,7 +103,7 @@ class HEOM(Solver):
     def __getstate__(self):
         """Return the picklable state of the HEOM solver."""
         d = super().__getstate__()
-        d["gamma_bath"]=self.gamma_bath, 
+        d["gamma_bath"] = self.gamma_bath
         d["Nk"] = self.Nk
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type

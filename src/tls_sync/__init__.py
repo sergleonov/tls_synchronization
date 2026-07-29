@@ -5,6 +5,7 @@ from .heom import HEOM
 from .lindblad import Lindblad
 from .tempo import TEMPO
 from .tiered import TieredSolver
+from . import plotting, utils
 
 __all__ = [
     "HEOM",
@@ -15,19 +16,6 @@ __all__ = [
     "SOLVERS",
     "SD_TYPES",
     "HUSIMI_EVAL_METHODS",
-    "smooth_envelope",
-    "compute_fft",
-    "find_max",
-    "find_min",
-    "plot_exc_map",
-    "plot_sp_map",
-    "plot_diff_map",
-    "plot_fft_map",
-    "set_plot_format",
-    "plot_husimi_snapshots",
-    "plot_husimi_anim",
-    "plot_phase_evolution",
-    "plot_correlations",
-    "plot_phase_corr_evolution",
-    "plot_corr_J_sweep",
+    "plotting",
+    "utils"
 ]

@@ -351,24 +351,6 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tl
 
     return fig, axes
 
-
-def husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels=None, method=None, omega_d=None, filename="husimi_snapshots", save=True, cmap="inferno"):
-    """Backward-compatible wrapper for plotting selected Husimi Q snapshots."""
-    return plot_husimi_snapshots(
-        Qts=Qts,
-        tlist=tlist,
-        snapshots=snapshots,
-        theta=theta,
-        phi=phi,
-        labels=labels,
-        method=method,
-        omega_d=omega_d,
-        filename=filename,
-        save=save,
-        cmap=cmap,
-    )
-
-
 def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, filename="husimi_animation"):
     """Generate and save a Husimi Q-function animation.
 
