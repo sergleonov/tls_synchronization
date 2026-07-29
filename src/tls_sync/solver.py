@@ -56,7 +56,8 @@ class Solver:
             Solver name used for validation and string formatting.
         """
 
-        assert name in SOLVERS, "Error: Invalid solver name"
+        if name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name")
         self._name = name
         
         self.J = J # interaction strength
@@ -86,7 +87,8 @@ class Solver:
         else:
             self.omega_tls = np.random.uniform(3.0, 5.0, self.n_tls) # GHz
         
-        assert self.n_tls == len(self.omega_tls)
+        if self.n_tls != len(self.omega_tls):
+            raise ValueError("Error: n_tls must equal the number of provided tls_freqs")
 
     def __getstate__(self):
         """Return the picklable state of the solver.
@@ -238,7 +240,8 @@ class Solver:
 
     def build_hamiltonian(self):
         """Construct the static system Hamiltonian."""
-        assert self._name in SOLVERS, "Error: Invalid solver name"
+        if self._name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name")
 
         self.H = sum(0.5 * self.omega_tls[i] * self.sz[i] for i in range(self.n_tls))
         for i in range(self.n_tls):
@@ -280,7 +283,8 @@ class Solver:
         ndarray
             Evaluated Husimi Q-function on the requested grid.
         """
-        assert method in HUSIMI_EVAL_METHODS, "Error: Invalid husimi evaluation method"
+        if method not in HUSIMI_EVAL_METHODS:
+            raise ValueError("Error: Invalid husimi evaluation method")
 
         if self._name == "TEMPO":
             dims = [2 for _ in range(self.n_tls)]
@@ -318,7 +322,8 @@ class Solver:
     def _pearson_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling Pearson correlation between two signals."""
         step = window_size - overlap
-        assert step > 0
+        if step <= 0:
+            raise ValueError("Error: overlap must be smaller than window_size")
         # TODO: add overlap control
         C_t = np.zeros(self.n_time)
         for i in range(window_size, self.n_time):
@@ -364,11 +369,14 @@ class Solver:
                 raise ValueError("window_size cannot exceed the number of stored states")
 
             return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
-    
+
+        raise ValueError("Error: Invalid correlation name")
+
     def _plv_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling phase locking value between two phase signals."""
         step = window_size - overlap
-        assert step > 0
+        if step <= 0:
+            raise ValueError("Error: overlap must be smaller than window_size")
         # TODO: add overlap control
         phi1, phi2 = np.angle(x), np.angle(y)
         phase_exp = np.exp(1j * (phi1 - phi2))
@@ -376,7 +384,7 @@ class Solver:
         plv_t = np.zeros(self.n_time)
         for i in range(window_size, self.n_time):
             plv_t[i] = np.abs(np.mean(phase_exp[i-window_size:i])) 
-    
+
         return plv_t
 
     def _entropy_evolution(self, states):
@@ -392,7 +400,8 @@ class Solver:
         dict
             Mapping of TLS pair labels to entropy trajectories.
         """
-        assert len(states) == self.n_time
+        if len(states) != self.n_time:
+            raise ValueError("Error: states length must equal n_time")
 
         if self._name == "TEMPO":
             states = states.states
