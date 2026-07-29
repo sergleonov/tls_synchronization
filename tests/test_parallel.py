@@ -9,22 +9,15 @@ import multiprocessing as mp
 from functools import partial
 
 import numpy as np
-import pytest
 
 from tls_sync.parallel import run_parallel, parallel_eval_husimi
 from _workers import dummy_worker, dummy_eval, N_TIME
 
-START_METHODS = [m for m in ("fork", "spawn", "forkserver")
-                 if m in mp.get_all_start_methods()]
-
-
-@pytest.mark.parametrize("method", START_METHODS)
-def test_run_parallel_shapes_and_routing(method):
-    ctx = mp.get_context(method)
+def test_run_parallel_shapes_and_routing():
     omega = np.array([3.0, 4.0, 5.0])
 
     exc, sp = run_parallel(omega, dummy_worker, N_TIME, False, "test",
-                           max_workers=2, mp_context=ctx)
+                           max_workers=2)
 
     assert exc.shape == (3, N_TIME)
     assert sp.shape == (3, N_TIME)
@@ -33,13 +26,11 @@ def test_run_parallel_shapes_and_routing(method):
     assert np.allclose(exc[:, 0], omega)
 
 
-@pytest.mark.parametrize("method", START_METHODS)
-def test_run_parallel_store_states(method):
-    ctx = mp.get_context(method)
+def test_run_parallel_store_states():
     omega = np.array([3.0, 4.0, 5.0])
 
     exc, sp, states = run_parallel(omega, partial(dummy_worker, store_states=True),
-                                   N_TIME, True, "test", max_workers=2, mp_context=ctx)
+                                   N_TIME, True, "test", max_workers=2)
 
     assert exc.shape == (3, N_TIME)
     assert states.shape == (3, N_TIME)

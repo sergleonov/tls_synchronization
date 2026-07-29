@@ -10,9 +10,6 @@ import pickle
 import numpy as np
 import pytest
 
-from tls_sync.heom import _rebuild_bath
-
-
 def _correlation(bath, tlist):
     """Return C(t) for a qutip environment, tolerant of minor API differences."""
     if hasattr(bath, "correlation_function"):
@@ -44,7 +41,7 @@ def test_bath_coeffs_pickle_roundtrip(request, fixture_name):
 def test_rebuilt_bath_matches_original_correlation(request, fixture_name):
     solver = request.getfixturevalue(fixture_name)
     bath = solver._build_bath()
-    rebuilt = _rebuild_bath(solver._bath_to_coeffs(bath))
+    rebuilt = solver._coeffs_to_bath(solver._bath_to_coeffs(bath))
 
     t = np.asarray(solver.tlist)
     c_orig = _correlation(bath, t)

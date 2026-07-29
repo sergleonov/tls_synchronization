@@ -98,9 +98,8 @@ class TEMPO(Solver):
                                     zeta=self.ohmicity,
                                     cutoff=self.gamma_bath,
                                     cutoff_type=self.cutoff_type,
-                                    temperature=self.T)
+                                    temperature=self.T)        
         self.bath = oqupy.Bath(sum(self.sx), correlations)
-
         self.tempo_params = oqupy.TempoParameters(dt=self.dt, tcut=self.tcut, epsrel=self.epsrel)
 
         # initial state 

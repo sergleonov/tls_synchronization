@@ -51,13 +51,13 @@ def tiered():
 @pytest.fixture
 def heom_drude():
     from tls_sync import HEOM
-    return HEOM(**BASE, gamma_bath=0.5, Nk=1, max_depth=2, sd_type="drude")
+    return HEOM(**BASE, gamma_bath=0.5, Nk=3, max_depth=3, sd_type="drude")
 
 
 @pytest.fixture
 def heom_power():
     from tls_sync import HEOM
-    return HEOM(**BASE, gamma_bath=0.5, Nk=2, max_depth=2, sd_type="power", ohmicity=1.0)
+    return HEOM(**BASE, gamma_bath=0.5, Nk=3, max_depth=3, sd_type="power", ohmicity=1.0)
 
 
 @pytest.fixture

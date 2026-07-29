@@ -45,7 +45,6 @@ def test_operator_dimensions(any_solver):
 
 
 def test_tempo_initial_state_dimension():
-    # regression guard: psi0 must live in 2**n_tls, not 2*n_tls
     from tls_sync import TEMPO
     for n_tls, freqs in [(2, [3.5, 4.0]), (3, [3.4, 3.7, 4.1])]:
         kw = dict(BASE)

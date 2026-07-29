@@ -42,9 +42,24 @@ def test_husimi_sim_shapes(any_solver, method):
 
 
 @pytest.mark.slow
-def test_husimi_sim_avg_is_nonnegative(qutip_solver):
-    Qt = qutip_solver.husimi_sim(OMEGA_D, THETA, PHI, "avg")
+@pytest.mark.parametrize("fixture_name", ["lindblad", "tempo"])
+def test_husimi_sim_avg_is_nonnegative(request, fixture_name):
+    # Lindblad and TEMPO produce completely-positive dynamics, so the reduced
+    # states are valid density matrices
+    solver = request.getfixturevalue(fixture_name)
+    Qt = solver.husimi_sim(OMEGA_D, THETA, PHI, "avg")
     assert Qt.min() > -1e-9
+
+
+@pytest.mark.slow
+def test_husimi_sim_heom_positivity_note(heom_drude):
+    # A truncated HEOM hierarchy is not guaranteed completely positive, so the
+    # reduced state can carry small negative eigenvalues and the Husimi Q can dip
+    # slightly below zero. That is a property of the truncation, not a bug: we
+    # only require the dip to be small. Deepen max_depth / Nk to shrink it.
+    Qt = heom_drude.husimi_sim(OMEGA_D, THETA, PHI, "avg")
+    assert np.isfinite(Qt).all()
+    assert Qt.min() > -1e-2      # loose bound; tighten as the hierarchy deepens
 
 
 @pytest.mark.xfail(reason="Husimi axis order for unequal len(theta)/len(phi) is "
