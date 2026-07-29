@@ -6,7 +6,7 @@ from tls_sync.plotting import plot_correlations
 
 
 def main():
-    tls_freqs = [3.75, 3.75]
+    tls_freqs = [3.75, 3.82]
     J = 0.02
     Omega_amp = 0.1
     lam = 0.002
@@ -94,16 +94,16 @@ def main():
                 tcut=tcut,
                 epsrel=epsrel)
     
-    window_size = 9
-    overlap = 6
+    window_size = 150
+    overlap = 149
     omega_d = tls_freqs[0]
     print(f"Drive frequency: {omega_d}")
 
     print("Computing dynamics...")
     solvers = [mark, tier, heom]
     for solver in solvers:
-        correlations, t = solver.plv_sim(omega_d, window_size, overlap)
-        plot_correlations(correlations, t, solver._name, correlation="PLV", filename=f"correlation_drive_{omega_d}_{solver}")
+        correlations, t = solver.pearson_sim(omega_d, window_size, overlap)
+        plot_correlations(correlations, t, solver.get_name(), corr_name="pearson", filename=f"correlation_drive_{omega_d}_{solver}")
     
     print("Showing plots...")
     plt.show()

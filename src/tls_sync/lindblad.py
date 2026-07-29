@@ -114,20 +114,34 @@ class Lindblad(Solver):
             return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
-    def run(self):
+    def run(self, store_states=False):
         """Execute Markovian Lindblad simulations across drive frequencies."""
         exc_mark = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
+        worker = partial(self._worker, store_states=store_states)
+        states_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
 
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        if store_states:
+            with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
 
-            for idx, (exc, sp) in enumerate(tqdm(executor.map(self._worker, self.omega_d_vals),
-                                                total=len(self.omega_d_vals),
-                                                desc="Markovian simulations")):
-                exc_mark[idx, :] = exc
-                sp_mark[idx, :] = sp
+                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                    total=len(self.omega_d_vals),
+                                                    desc="Markovian simulations")):
+                    exc_mark[idx, :] = exc
+                    sp_mark[idx, :] = sp
+                    states_mark[idx, :] = states
+                
+                return (exc_mark, sp_mark, states_mark)
+        else:
+            with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
             
-            return (exc_mark, sp_mark)
+                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                    total=len(self.omega_d_vals),
+                                                    desc="Markovian simulations")):
+                    exc_mark[idx, :] = exc
+                    sp_mark[idx, :] = sp
+                
+                return (exc_mark, sp_mark)
         
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for a Lindblad simulation."""

@@ -83,6 +83,8 @@ def find_max(mats):
     float
         The maximum value found in any of the input matrices.
     """
+    if not mats:
+        raise ValueError("Error: mats must be a non-empty sequence of arrays")
     res = np.max(mats[0])
     for i in range(1, len(mats)):
         res = max(res, np.max(mats[i]))
@@ -102,6 +104,8 @@ def find_min(mats):
     float
         The minimum value found in any of the input matrices.
     """
+    if not mats:
+        raise ValueError("Error: mats must be a non-empty sequence of arrays")
     res = np.min(mats[0])
     for i in range(1, len(mats)):
         res = min(res, np.min(mats[i]))

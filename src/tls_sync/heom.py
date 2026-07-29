@@ -103,7 +103,7 @@ class HEOM(Solver):
     def __getstate__(self):
         """Return the picklable state of the HEOM solver."""
         d = super().__getstate__()
-        d["gamma_bath"]=self.gamma_bath, 
+        d["gamma_bath"] = self.gamma_bath
         d["Nk"] = self.Nk
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type
@@ -184,7 +184,7 @@ class HEOM(Solver):
             case _: 
                 raise ValueError("Invalid spectral density type.")
     
-    def run(self):
+    def run(self, store_states=False):
         """Execute HEOM simulations across all configured drive frequencies."""
         assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         # bath
@@ -192,16 +192,27 @@ class HEOM(Solver):
 
         exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
         sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
+        states_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
+
+        worker = partial(self._worker, store_states=store_states)
 
         with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-
-            for idx, (exc, sp) in enumerate(tqdm(executor.map(self._worker, self.omega_d_vals),
-                                                total=len(self.omega_d_vals),
-                                                desc="HEOM simulations")):
-                exc_heom[idx, :] = exc
-                sp_heom[idx, :] = sp
-            
-            return (exc_heom, sp_heom)
+            if store_states:
+                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                    total=len(self.omega_d_vals),
+                                                    desc="HEOM simulations")):
+                    exc_heom[idx, :] = exc
+                    sp_heom[idx, :] = sp
+                    states_heom[idx, :] = states
+                return (exc_heom, sp_heom, states_heom)
+            else:
+                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
+                                                    total=len(self.omega_d_vals),
+                                                    desc="HEOM simulations")):
+                    exc_heom[idx, :] = exc
+                    sp_heom[idx, :] = sp
+                
+                return (exc_heom, sp_heom)
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for an HEOM run at a given drive frequency."""

@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from tls_sync import HEOM, Lindblad, TieredSolver, TEMPO
-from tls_sync.plotting import plot_phase_corr_evolution
+from tls_sync.plotting import plot_phase_corr_evolution, set_plot_format
 
 def main():
     tls_freqs = [3.75, 3.82]
@@ -98,7 +98,7 @@ def main():
     print("Computing dynamics...")
     corr_names = ["pearson", "plv", "connected", "entropy"]
     solvers = [mark, heom, tier, tempo]
-
+    set_plot_format(1.25, 1.25)
     for solver in solvers:
         p, c, t = solver.phase_corr_sim(omega_d, corr_names=corr_names, window_size=150, overlap=149)
         plot_phase_corr_evolution(p, c, corr_names, t, solver.omega_tls, solver.get_name(), filename=f"{solver.get_name()}_drive_{omega_d}_freqs_{tls_freqs[0]}_{tls_freqs[1]}")

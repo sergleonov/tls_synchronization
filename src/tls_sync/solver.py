@@ -56,7 +56,8 @@ class Solver:
             Solver name used for validation and string formatting.
         """
 
-        assert name in SOLVERS, "Error: Invalid solver name"
+        if name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name")
         self._name = name
         
         self.J = J # interaction strength
@@ -86,7 +87,8 @@ class Solver:
         else:
             self.omega_tls = np.random.uniform(3.0, 5.0, self.n_tls) # GHz
         
-        assert self.n_tls == len(self.omega_tls)
+        if self.n_tls != len(self.omega_tls):
+            raise ValueError("Error: n_tls must equal the number of provided tls_freqs")
 
     def __getstate__(self):
         """Return the picklable state of the solver.
@@ -238,7 +240,8 @@ class Solver:
 
     def build_hamiltonian(self):
         """Construct the static system Hamiltonian."""
-        assert self._name in SOLVERS, "Error: Invalid solver name"
+        if self._name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name")
 
         self.H = sum(0.5 * self.omega_tls[i] * self.sz[i] for i in range(self.n_tls))
         for i in range(self.n_tls):
@@ -280,7 +283,8 @@ class Solver:
         ndarray
             Evaluated Husimi Q-function on the requested grid.
         """
-        assert method in HUSIMI_EVAL_METHODS, "Error: Invalid husimi evaluation method"
+        if method not in HUSIMI_EVAL_METHODS:
+            raise ValueError("Error: Invalid husimi evaluation method")
 
         if self._name == "TEMPO":
             dims = [2 for _ in range(self.n_tls)]
@@ -318,17 +322,61 @@ class Solver:
     def _pearson_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling Pearson correlation between two signals."""
         step = window_size - overlap
-        assert step > 0
+        if step <= 0:
+            raise ValueError("Error: overlap must be smaller than window_size")
         # TODO: add overlap control
         C_t = np.zeros(self.n_time)
         for i in range(window_size, self.n_time):
             C_t[i] = np.corrcoef(x[i-window_size:i], y[i-window_size:i])[1, 0]
         return C_t
+
+    def final_corr_from_states(self, states, corr_name, window_size):
+        """Compute the final rolling Pearson correlation from a state trajectory."""
+
+        if self.n_tls < 2:
+            raise ValueError("Correlation requires at least two TLSs")
+
+        if corr_name.lower() == "plv":
+            exp_sms = []
+            for i in range(self.n_tls):
+                if self.is_qutip_solver:
+                    exp_sm = qt.expect(self.sm[i], states)
+                else: 
+                    t, exp_sm = states.expectations(self.sm[i])
+                exp_sms.append(exp_sm)
+            x = np.asarray(exp_sms[0])
+            y = np.asarray(exp_sms[1])
+            phi1, phi2 = np.angle(x), np.angle(y)
+            phase_exp = np.exp(1j * (phi1 - phi2))
+
+            if len(x) < window_size:
+                raise ValueError("window_size cannot exceed the number of stored states")
     
+            return np.abs(np.mean(phase_exp[-window_size:])) 
+
+        if corr_name.lower() == "pearson":
+            exp_xs = []
+            for i in range(self.n_tls):
+                if self.is_qutip_solver:
+                    exp_x = qt.expect(self.sx[i], states)
+                else:
+                    t, exp_x = states.expectations(self.sx[i])
+                exp_xs.append(np.real(exp_x))
+            x = np.asarray(exp_xs[0])
+            y = np.asarray(exp_xs[1])
+
+            if len(x) < window_size:
+                raise ValueError("window_size cannot exceed the number of stored states")
+
+            return np.corrcoef(x[-window_size:], y[-window_size:])[1, 0]
+
+        raise ValueError("Error: Invalid correlation name")
+
     def _plv_evolution(self, x, y, window_size, overlap=1):
         """Compute a rolling phase locking value between two phase signals."""
         step = window_size - overlap
-        assert step > 0
+        if step <= 0:
+            raise ValueError("Error: overlap must be smaller than window_size")
         # TODO: add overlap control
         phi1, phi2 = np.angle(x), np.angle(y)
         phase_exp = np.exp(1j * (phi1 - phi2))
@@ -336,7 +384,7 @@ class Solver:
         plv_t = np.zeros(self.n_time)
         for i in range(window_size, self.n_time):
             plv_t[i] = np.abs(np.mean(phase_exp[i-window_size:i])) 
-    
+
         return plv_t
 
     def _entropy_evolution(self, states):
@@ -352,7 +400,8 @@ class Solver:
         dict
             Mapping of TLS pair labels to entropy trajectories.
         """
-        assert len(states) == self.n_time
+        if len(states) != self.n_time:
+            raise ValueError("Error: states length must equal n_time")
 
         if self._name == "TEMPO":
             states = states.states
@@ -425,7 +474,6 @@ class Solver:
                 exp_x = qt.expect(self.sx[i], states)
             else:
                 t, exp_x = states.expectations(self.sx[i], real=True)
-
             exp_xs.append(exp_x)
         
         if corr_name.lower() == "connected":
@@ -443,7 +491,7 @@ class Solver:
                 if self.is_qutip_solver:
                     exp_sm = qt.expect(self.sm[i], states)
                 else: 
-                    t, exp_sm = states.expectations(self.sx[i], real=True)
+                    t, exp_sm = states.expectations(self.sm[i])
                 exp_sms.append(exp_sm)
         
         for i in range(0, self.n_tls):
@@ -452,7 +500,7 @@ class Solver:
                     case "plv":
                         corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._plv_evolution(exp_sms[i], exp_sms[j], window_size=window_size, overlap=overlap)
                     case "pearson":
-                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(exp_xs[i], exp_xs[j], window_size=window_size, overlap=overlap)
+                        corrs[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = self._pearson_evolution(np.real(exp_xs[i]), np.real(exp_xs[j]), window_size=window_size, overlap=overlap)
                     case "connected":
                         if self.is_qutip_solver:
                             q_corr = (exp_xs_all - exp_xs[i] * exp_xs[j]) / np.sqrt((qt.variance(self.sx[i], states) * qt.variance(self.sx[j], states)))
