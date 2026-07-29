@@ -163,7 +163,8 @@ class Solver:
         The method constructs Pauli operators for each TLS and sets up the
         collective excitation and spin operators used by solver backends.
         """
-        assert self._name in SOLVERS, "Error: Invalid solver name"
+        if self._name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name.")
 
         sx_tls = []
         sy_tls = []
