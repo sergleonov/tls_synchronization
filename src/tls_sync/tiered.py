@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from tqdm import tqdm
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
 from functools import partial
 
@@ -136,78 +134,29 @@ class TieredSolver(Solver):
     
     def run(self, store_states=False):
         """Execute Tiered solver simulations across drive frequencies."""
-        exc_mark = np.zeros((len(self.omega_d_vals), self.n_time))
-        sp_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
-        states_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
-
         worker = partial(self._worker, store_states=store_states)
 
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-            if store_states:
-                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="Tiered System simulations")):
-                    exc_mark[idx, :] = exc
-                    sp_mark[idx, :] = sp
-                    states_mark[idx, :] = states
-                return (exc_mark, sp_mark, states_mark)
-            else:
-                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="Tiered System simulations")):
-                    exc_mark[idx, :] = exc
-                    sp_mark[idx, :] = sp
-                
-                return (exc_mark, sp_mark)
+        return run_parallel(
+            self.omega_d_vals,
+            worker,
+            self.n_time,
+            store_states,
+            desc="Tiered System simulations"
+        )
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for a Tiered solver run."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        Qt = np.zeros((self.n_time, len(theta), len(phi)))
-
-        eval_husimi_partial = partial(self.eval_husimi,
-                                      theta=theta,
-                                      phi=phi,
-                                      method=method,
-                                      tls_idx=tls_idx)
-
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        states = self._get_states(omega_d)
+        return parallel_eval_husimi(
+            states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc="Tiered Husimi-Q Computation"
+        )
         
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
-                                            total=len(states), 
-                                            desc="Tiered Husimi-Q Computation")):
-                Qt[t_idx] = Q
-        
-        return Qt
-        
-    def phase_sim(self, omega_d):
-        """Compute TLS phase trajectories for a Tiered run."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        
-        return self._phase_sim_helper(states)
-
-    def pearson_sim(self, omega_d, window_size, overlap):
-        """Compute rolling Pearson correlations from Tiered solver states."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "pearson", window_size, overlap)
-    
-    def plv_sim(self, omega_d, window_size, overlap):
-        """Compute rolling phase locking values from Tiered solver states."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "plv", window_size, overlap)
-
-    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
-        """Compute phase trajectories and requested correlations for Tiered solver."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        phases, t = self._phase_sim_helper(states)
-        if isinstance(corr_names, list):
-            corrs = []
-            for corr_name in corr_names:
-                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
-                corrs.append(corr)
-            return phases, corrs, t
-
-        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
-        return phases, corr, t
+    def _get_states(self, omega_d):
+        _, _, states = self._worker(omega_d, store_states=True)
+        return states

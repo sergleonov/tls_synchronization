@@ -152,7 +152,7 @@ class Solver:
             self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
             self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
         if self._name == "Tiered":
-            self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
+            self.a = self._tensor([qt.qeye(2)] * self.n_tls + [qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
             self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * (self.a))
             self.c_ops.append(np.sqrt(self.lam * (n_th_mode)) * (self.a.dag()))
@@ -163,7 +163,8 @@ class Solver:
         The method constructs Pauli operators for each TLS and sets up the
         collective excitation and spin operators used by solver backends.
         """
-        assert self._name in SOLVERS, "Error: Invalid solver name"
+        if self._name not in SOLVERS:
+            raise ValueError("Error: Invalid solver name.")
 
         sx_tls = []
         sy_tls = []
@@ -300,21 +301,21 @@ class Solver:
                 if tls_idx is None:
                     raise ValueError("Error: Index for the partial trace is None")
                 rho_partial = qt.ptrace(rho, tls_idx)
-                Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
+                Q, _, _ = qt.spin_q_function(rho_partial, theta, phi)
                 return prefactor * np.transpose(Q)
             case "avg":
                 Qs = []
                 for i in range(self.n_tls):
                     rho_partial = qt.ptrace(rho, i)
-                    Q, theta_list, phi_list = qt.spin_q_function(rho_partial, theta, phi)
+                    Q, _, _ = qt.spin_q_function(rho_partial, theta, phi)
                     Qs.append(Q)
                 Q_res = np.mean(Qs, axis=0)
                 return prefactor * np.transpose(Q_res)
             case "diff":
                 if self.n_tls != 2: raise ValueError("Error: Husimi Difference is only supported for 2 TLSs.")
                 rho_1, rho_2 = qt.ptrace(rho, 0), qt.ptrace(rho, 1)
-                Q1, theta_list, phi_list = qt.spin_q_function(rho_1, theta, phi)
-                Q2, theta_list, phi_list = qt.spin_q_function(rho_2, theta, phi)
+                Q1, _, _ = qt.spin_q_function(rho_1, theta, phi)
+                Q2, _, _ = qt.spin_q_function(rho_2, theta, phi)
                 return prefactor * np.transpose(Q1 - Q2)
             case _:
                 raise ValueError("Error: Invalid Husimi-Q evaluation method.")
@@ -515,3 +516,36 @@ class Solver:
                         raise ValueError("Error: Invalid correlation name.")
 
         return corrs, self.tlist
+
+    def _get_states(self, omega_d):
+        """Return stored states or dynamics from a single-frequency run."""
+        raise NotImplementedError("Solver subclasses must implement _get_states()")
+
+    def phase_sim(self, omega_d):
+        """Compute TLS phase differences from solver states."""
+        states = self._get_states(omega_d)
+        return self._phase_sim_helper(states)
+
+    def pearson_sim(self, omega_d, window_size, overlap):
+        """Compute rolling Pearson correlations from solver states."""
+        states = self._get_states(omega_d)
+        return self._cor_sim_helper(states, "pearson", window_size, overlap)
+
+    def plv_sim(self, omega_d, window_size, overlap):
+        """Compute rolling phase locking values from solver states."""
+        states = self._get_states(omega_d)
+        return self._cor_sim_helper(states, "plv", window_size, overlap)
+
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
+        """Compute phase differences and requested correlations from solver states."""
+        states = self._get_states(omega_d)
+        phases, t = self._phase_sim_helper(states)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, _ = self._cor_sim_helper(states, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
+
+        corr, _ = self._cor_sim_helper(states, corr_names, window_size, overlap)
+        return phases, corr, t
