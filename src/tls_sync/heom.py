@@ -188,21 +188,12 @@ class HEOM(Solver):
         self._build_bath()
 
         worker = partial(self._worker, store_states=store_states)
-        if store_states:
-            exc_heom, sp_heom, states_heom = run_parallel(
-                self.omega_d_vals,
-                worker,
-                self.n_time,
-                True,
-                desc="HEOM simulations"
-            )
-            return exc_heom, sp_heom, states_heom
 
         return run_parallel(
-            self.omega_d_vals,
-            worker,
-            self.n_time,
-            False,
+            omega_d_vals=self.omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
             desc="HEOM simulations"
         )
     

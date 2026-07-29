@@ -177,23 +177,12 @@ class TEMPO(Solver):
                          process_tensor=process_tensor,
                          store_states=store_states)
 
-        if store_states:
-            exc_tempo, sp_tempo, states_tempo = run_parallel(
-                self.omega_d_vals,
-                worker,
-                self.n_time,
-                True,
-                desc="TEMPO Simulations",
-                state_postprocess=lambda dynamics: dynamics.states if hasattr(dynamics, "states") else dynamics
-            )
-            return exc_tempo, sp_tempo, states_tempo
-
         return run_parallel(
-            self.omega_d_vals,
-            worker,
-            self.n_time,
-            False,
-            desc="TEMPO Simulations"
+            omega_d_vals=self.omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
+            desc="TEMPO Simulations",
         )
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):

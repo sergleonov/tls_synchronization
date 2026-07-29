@@ -116,20 +116,11 @@ class Lindblad(Solver):
         """Execute Markovian Lindblad simulations across drive frequencies."""
         worker = partial(self._worker, store_states=store_states)
 
-        if store_states:
-            return run_parallel(
-                self.omega_d_vals,
-                worker,
-                self.n_time,
-                True,
-                desc="Markovian simulations"
-            )
-
         return run_parallel(
-            self.omega_d_vals,
-            worker,
-            self.n_time,
-            False,
+            omega_d_vals=self.omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
             desc="Markovian simulations"
         )
 
