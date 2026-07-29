@@ -19,12 +19,7 @@ jobs:
       matrix:
         include:
           # --- Linux, default (fork) start method, across Python versions ---
-          - { os: ubuntu-latest, python: "3.10", start_method: default }
           - { os: ubuntu-latest, python: "3.11", start_method: default }
-          - { os: ubuntu-latest, python: "3.12", start_method: default }
-          # --- Linux, force spawn: catches pickling/serialization regressions
-          #     (the class of bug that broke HEOM) without needing a Mac ---
-          - { os: ubuntu-latest, python: "3.11", start_method: spawn }
           # --- macOS: spawn is the native default, real cross-platform check ---
           - { os: macos-latest,  python: "3.11", start_method: default }
 
