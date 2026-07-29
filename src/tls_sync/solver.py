@@ -515,3 +515,36 @@ class Solver:
                         raise ValueError("Error: Invalid correlation name.")
 
         return corrs, self.tlist
+
+    def _get_states(self, omega_d):
+        """Return stored states or dynamics from a single-frequency run."""
+        raise NotImplementedError("Solver subclasses must implement _get_states()")
+
+    def phase_sim(self, omega_d):
+        """Compute TLS phase trajectories from solver states."""
+        states = self._get_states(omega_d)
+        return self._phase_sim_helper(states)
+
+    def pearson_sim(self, omega_d, window_size, overlap):
+        """Compute rolling Pearson correlations from solver states."""
+        states = self._get_states(omega_d)
+        return self._cor_sim_helper(states, "pearson", window_size, overlap)
+
+    def plv_sim(self, omega_d, window_size, overlap):
+        """Compute rolling phase locking values from solver states."""
+        states = self._get_states(omega_d)
+        return self._cor_sim_helper(states, "plv", window_size, overlap)
+
+    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
+        """Compute phase trajectories and requested correlations from solver states."""
+        states = self._get_states(omega_d)
+        phases, t = self._phase_sim_helper(states)
+        if isinstance(corr_names, list):
+            corrs = []
+            for corr_name in corr_names:
+                corr, _ = self._cor_sim_helper(states, corr_name, window_size, overlap)
+                corrs.append(corr)
+            return phases, corrs, t
+
+        corr, _ = self._cor_sim_helper(states, corr_names, window_size, overlap)
+        return phases, corr, t

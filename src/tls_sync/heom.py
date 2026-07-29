@@ -1,8 +1,6 @@
 from tls_sync import Solver, SD_TYPES
 import numpy as np
-from tqdm import tqdm
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
 from qutip.solver.heom import HEOMSolver
 from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment
@@ -187,91 +185,41 @@ class HEOM(Solver):
     def run(self, store_states=False):
         """Execute HEOM simulations across all configured drive frequencies."""
         assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
-        # bath
         self._build_bath()
 
-        exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
-        sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
-        states_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
-
         worker = partial(self._worker, store_states=store_states)
+        if store_states:
+            exc_heom, sp_heom, states_heom = run_parallel(
+                self.omega_d_vals,
+                worker,
+                self.n_time,
+                True,
+                desc="HEOM simulations"
+            )
+            return exc_heom, sp_heom, states_heom
 
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-            if store_states:
-                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="HEOM simulations")):
-                    exc_heom[idx, :] = exc
-                    sp_heom[idx, :] = sp
-                    states_heom[idx, :] = states
-                return (exc_heom, sp_heom, states_heom)
-            else:
-                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="HEOM simulations")):
-                    exc_heom[idx, :] = exc
-                    sp_heom[idx, :] = sp
-                
-                return (exc_heom, sp_heom)
+        return run_parallel(
+            self.omega_d_vals,
+            worker,
+            self.n_time,
+            False,
+            desc="HEOM simulations"
+        )
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for an HEOM run at a given drive frequency."""
+        states = self._get_states(omega_d)
+        return parallel_eval_husimi(
+            states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc="HEOM Husimi-Q Computation"
+        )
+
+    def _get_states(self, omega_d):
         self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        Qt = np.zeros((self.n_time, len(theta), len(phi)))
-
-        eval_husimi_partial = partial(self.eval_husimi,
-                                      theta=theta,
-                                      phi=phi,
-                                      method=method,
-                                      tls_idx=tls_idx)
-
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-        
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
-                                            total=len(states), 
-                                            desc="HEOM Husimi-Q Computation")):
-                Qt[t_idx] = Q
-        
-        return Qt
-
-    def phase_sim(self, omega_d):
-        """Compute TLS phase trajectories for an HEOM run."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        
-        return self._phase_sim_helper(states)
-        
-    def pearson_sim(self, omega_d, window_size, overlap):
-        """Compute rolling Pearson correlations from HEOM temporal states."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "pearson", window_size, overlap)
-    
-    def plv_sim(self, omega_d, window_size, overlap):
-        """Compute rolling phase locking values from HEOM temporal states."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "plv", window_size, overlap)
-
-    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
-        """Compute phase trajectories and requested correlations for HEOM."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        phases, t = self._phase_sim_helper(states)
-        if isinstance(corr_names, list):
-            corrs = []
-            for corr_name in corr_names:
-                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
-                corrs.append(corr)
-            return phases, corrs, t
-
-        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
-        return phases, corr, t
+        _, _, states = self._worker(omega_d, store_states=True)
+        return states

@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from tqdm import tqdm
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from .parallel import run_parallel, parallel_eval_husimi
 import oqupy
 from functools import partial
 
@@ -175,103 +173,47 @@ class TEMPO(Solver):
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc_tempo = np.zeros((len(self.omega_d_vals), self.n_time))
-        sp_tempo  = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
-        states_tempo = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
-
         worker = partial(self._worker,
                          process_tensor=process_tensor,
                          store_states=store_states)
 
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-            if store_states:
-                for idx, (exc_res, sp_res, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                        total=len(self.omega_d_vals),
-                                                        desc="TEMPO Simulations")):
-                    exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
-                    states_tempo[idx, :] = states.states if hasattr(states, "states") else states
-                return (exc_tempo, sp_tempo, states_tempo)
-            else:
-                for idx, (exc_res, sp_res) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                        total=len(self.omega_d_vals),
-                                                        desc="TEMPO Simulations")):
-                    exc_tempo[idx,:], sp_tempo[idx,:] = exc_res, sp_res
+        if store_states:
+            exc_tempo, sp_tempo, states_tempo = run_parallel(
+                self.omega_d_vals,
+                worker,
+                self.n_time,
+                True,
+                desc="TEMPO Simulations",
+                state_postprocess=lambda dynamics: dynamics.states if hasattr(dynamics, "states") else dynamics
+            )
+            return exc_tempo, sp_tempo, states_tempo
 
-                return (exc_tempo, sp_tempo)
+        return run_parallel(
+            self.omega_d_vals,
+            worker,
+            self.n_time,
+            False,
+            desc="TEMPO Simulations"
+        )
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for a TEMPO run at a given drive frequency."""
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-        Qt = np.zeros((self.n_time, len(theta), len(phi)))
-
-        eval_husimi_partial = partial(self.eval_husimi,
-                                      theta=theta,
-                                      phi=phi,
-                                      method=method,
-                                      tls_idx=tls_idx)
-
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-        
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, dynamics.states), 
-                                            total=len(dynamics.states), 
-                                            desc="TEMPO Husimi-Q Computation")):
-                Qt[t_idx] = Q
-        
-        return Qt
+        dynamics = self._get_states(omega_d)
+        return parallel_eval_husimi(
+            dynamics.states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc="TEMPO Husimi-Q Computation"
+        )
     
-    def phase_sim(self, omega_d):
-        """Compute TLS phase trajectories for a TEMPO run."""
+    def _get_states(self, omega_d):
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
 
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-        
-        return self._phase_sim_helper(dynamics)
-    
-    def pearson_sim(self, omega_d, window_size, overlap):
-        """Compute rolling Pearson correlations from TEMPO temporal states."""
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-
-        return self._cor_sim_helper(dynamics, "pearson", window_size, overlap)
-    
-    def plv_sim(self, omega_d, window_size, overlap):
-        """Compute rolling phase locking values from TEMPO temporal states."""
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-
-        return self._cor_sim_helper(dynamics, "plv", window_size, overlap)
-    
-    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
-        """Compute phase trajectories and requested correlations for TEMPO."""
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-        
-        exc, sp, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-        phases, t = self._phase_sim_helper(dynamics)
-        if isinstance(corr_names, list):
-            corrs = []
-            for corr_name in corr_names:
-                corr, t = self._cor_sim_helper(dynamics, corr_name, window_size, overlap)
-                corrs.append(corr)
-            return phases, corrs, t
-
-        corr, t = self._cor_sim_helper(dynamics, corr_names, window_size, overlap)
-        return phases, corr, t
+        _, _, dynamics = self._worker(omega_d, process_tensor, store_states=True)
+        return dynamics
