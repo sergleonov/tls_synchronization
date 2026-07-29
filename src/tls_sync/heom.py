@@ -60,7 +60,8 @@ class HEOM(Solver):
         ohmicity : float or None
             Power-law exponent for ``power`` spectral density.
         """
-        assert sd_type in SD_TYPES, "Error: Invalid spectral density"
+        if sd_type not in SD_TYPES: 
+            raise ValueError("Error: Invalid spectral density.")
 
         self.gamma_bath = gamma_bath
         
@@ -101,12 +102,13 @@ class HEOM(Solver):
     def __getstate__(self):
         """Return the picklable state of the HEOM solver."""
         d = super().__getstate__()
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
         d["gamma_bath"] = self.gamma_bath
         d["Nk"] = self.Nk
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type
         d["ohmicity"] = self.ohmicity
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         return d
 
     def __setstate__(self, d):
@@ -138,7 +140,8 @@ class HEOM(Solver):
                 return self._name
 
     def __str__(self):
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
         sd = self.sd_type
         if sd == "power": sd += f"_{self.ohmicity}"
         return super().__str__() + f"_gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
@@ -184,7 +187,8 @@ class HEOM(Solver):
     
     def run(self, store_states=False):
         """Execute HEOM simulations across all configured drive frequencies."""
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
         self._build_bath()
 
         worker = partial(self._worker, store_states=store_states)
