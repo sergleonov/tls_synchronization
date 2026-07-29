@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from tqdm import tqdm
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
 from functools import partial
 
@@ -116,81 +114,29 @@ class Lindblad(Solver):
     
     def run(self, store_states=False):
         """Execute Markovian Lindblad simulations across drive frequencies."""
-        exc_mark = np.zeros((len(self.omega_d_vals), self.n_time))
-        sp_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
         worker = partial(self._worker, store_states=store_states)
-        states_mark = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
 
-        if store_states:
-            with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
+        return run_parallel(
+            omega_d_vals=self.omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
+            desc="Markovian simulations"
+        )
 
-                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="Markovian simulations")):
-                    exc_mark[idx, :] = exc
-                    sp_mark[idx, :] = sp
-                    states_mark[idx, :] = states
-                
-                return (exc_mark, sp_mark, states_mark)
-        else:
-            with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-            
-                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="Markovian simulations")):
-                    exc_mark[idx, :] = exc
-                    sp_mark[idx, :] = sp
-                
-                return (exc_mark, sp_mark)
-        
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for a Lindblad simulation."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        Qt = np.zeros((self.n_time, len(theta), len(phi)))
-
-        eval_husimi_partial = partial(self.eval_husimi,
-                                      theta=theta,
-                                      phi=phi,
-                                      method=method,
-                                      tls_idx=tls_idx)
-
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-        
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
-                                            total=len(states), 
-                                            desc="Lindblad Husimi-Q Computation")):
-                Qt[t_idx] = Q
-        
-        return Qt
+        states = self._get_states(omega_d)
+        return parallel_eval_husimi(
+            states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc="Lindblad Husimi-Q Computation"
+        )
     
-    def phase_sim(self, omega_d):
-        """Compute TLS phase trajectories for a Lindblad run."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        
-        return self._phase_sim_helper(states)
-    
-    def pearson_sim(self, omega_d, window_size, overlap):
-        """Compute rolling Pearson correlations from Lindblad states."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "pearson", window_size, overlap)
-    
-    def plv_sim(self, omega_d, window_size, overlap):
-        """Compute rolling phase locking values from Lindblad states."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "plv", window_size, overlap)
-    
-    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
-        """Compute phase correlations and optional additional correlation metrics."""
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        phases, t = self._phase_sim_helper(states)
-        if isinstance(corr_names, list):
-            corrs = []
-            for corr_name in corr_names:
-                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
-                corrs.append(corr)
-            return phases, corrs, t
-
-        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
-        return phases, corr, t
+    def _get_states(self, omega_d):
+        _, _, states = self._worker(omega_d, store_states=True)
+        return states

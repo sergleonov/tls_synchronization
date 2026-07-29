@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python }} · ${{ matrix.os }} · mp=${{ matrix.start_method }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Linux, default (fork) start method, across Python versions ---
+          - { os: ubuntu-latest, python: "3.11", start_method: default }
+          # --- macOS: spawn is the native default, real cross-platform check ---
+          - { os: macos-latest,  python: "3.11", start_method: default }
+
+    env:
+      MPLBACKEND: Agg
+      # Empty string => conftest leaves the platform default untouched.
+      TLS_MP_START: ${{ matrix.start_method == 'default' && '' || matrix.start_method }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Show environment
+        run: |
+          python -c "import numpy, scipy, qutip, oqupy; \
+            print('numpy', numpy.__version__); print('scipy', scipy.__version__); \
+            print('qutip', qutip.__version__); print('oqupy', getattr(oqupy,'__version__','?'))"
+
+      - name: Fast tests (no heavy simulations)
+        run: pytest -m "not slow" -v --durations=10
+
+      - name: Full suite (including simulations)
+        run: pytest -v --durations=15

@@ -1,11 +1,9 @@
 from tls_sync import Solver, SD_TYPES
 import numpy as np
-from tqdm import tqdm
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
 from qutip.solver.heom import HEOMSolver
-from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment
+from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment, ExponentialBosonicEnvironment
 from functools import partial
 
 class HEOM(Solver):
@@ -62,7 +60,8 @@ class HEOM(Solver):
         ohmicity : float or None
             Power-law exponent for ``power`` spectral density.
         """
-        assert sd_type in SD_TYPES, "Error: Invalid spectral density"
+        if sd_type not in SD_TYPES: 
+            raise ValueError("Error: Invalid spectral density.")
 
         self.gamma_bath = gamma_bath
         
@@ -103,12 +102,13 @@ class HEOM(Solver):
     def __getstate__(self):
         """Return the picklable state of the HEOM solver."""
         d = super().__getstate__()
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
         d["gamma_bath"] = self.gamma_bath
         d["Nk"] = self.Nk
         d["max_depth"] = self.max_depth
         d["sd_type"] = self.sd_type
         d["ohmicity"] = self.ohmicity
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
         return d
 
     def __setstate__(self, d):
@@ -140,22 +140,23 @@ class HEOM(Solver):
                 return self._name
 
     def __str__(self):
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
         sd = self.sd_type
         if sd == "power": sd += f"_{self.ohmicity}"
         return super().__str__() + f"_gamma_bath_{self.gamma_bath}_Nk{self.Nk}_max_depth_{self.max_depth}_{sd}"
     
-    def _worker(self, omega_d, store_states=False):
+    def _worker(self, omega_d, bath_coeffs, store_states=False):
         """Run a single HEOM simulation for a specific drive frequency."""
         H_full = qt.QobjEvo(
         [self.H, [sum(self.sx), self.drive_coeff]],
         args = {"omega": omega_d}
         )
 
-        global _heom_bath
+        bath = self._coeffs_to_bath(bath_coeffs)
         solver = HEOMSolver(
             H_full,
-            (_heom_bath, sum(self.sx)),
+            (bath, sum(self.sx)),
             max_depth=self.max_depth,
             options={"nsteps": 5000, "progress_bar": '', "store_states": store_states},
         )
@@ -171,107 +172,91 @@ class HEOM(Solver):
         return np.real(result.expect[0]), result.expect[1]
     
     def _build_bath(self):
-        """Build the HEOM bath object based on the chosen spectral density."""
-        # bath
-        global _heom_bath
+        """Build and return the HEOM bath object for the chosen spectral density."""
         match self.sd_type:
             case "drude": # Drude-Lorentz
                 env = DrudeLorentzEnvironment(T=self.T, lam=self.lam, gamma=self.gamma_bath, Nk=self.Nk)
-                _heom_bath = env.approximate("matsubara", Nk=self.Nk)
+                return env.approximate("matsubara", Nk=self.Nk)
             case "power": # Power Law
                 env = OhmicEnvironment(T=self.T, alpha=self.lam, wc=self.gamma_bath, s=self.ohmicity) # alpha is coupling, wc is cutoff
-                _heom_bath, info = env.approximate(method="cf", tlist=self.tlist, target_rmse=None, Nr_max=self.Nk, Ni_max=self.Nk, maxfev=1e8)
-            case _: 
+                bath, _info = env.approximate(method="cf", tlist=self.tlist, target_rmse=None, Nr_max=self.Nk, Ni_max=self.Nk, maxfev=int(1e8))
+                return bath
+            case _:
                 raise ValueError("Invalid spectral density type.")
+
+    @staticmethod
+    def _bath_to_coeffs(bath):
+        """Extract picklable exponential expansion coefficients from a bosonic bath."""
+        ck_real, vk_real, ck_imag, vk_imag = [], [], [], []
+        for exp in bath.exponents:
+            etype = getattr(exp.type, "name", str(exp.type))
+            if etype == "R":
+                ck_real.append(complex(exp.ck)); vk_real.append(complex(exp.vk))
+            elif etype == "I":
+                ck_imag.append(complex(exp.ck)); vk_imag.append(complex(exp.vk))
+            elif etype == "RI":
+                # combined term: real part uses ck, imaginary part uses ck2,
+                # both sharing the same decay rate vk
+                ck_real.append(complex(exp.ck)); vk_real.append(complex(exp.vk))
+                ck_imag.append(complex(exp.ck2)); vk_imag.append(complex(exp.vk))
+            else:
+                raise ValueError(
+                    f"Unexpected bath exponent type {etype!r}."
+                )
+        T = getattr(bath, "T", None)
+        return (
+            np.array(ck_real, dtype=complex),
+            np.array(vk_real, dtype=complex),
+            np.array(ck_imag, dtype=complex),
+            np.array(vk_imag, dtype=complex),
+            T,
+        )
+
+    @staticmethod
+    def _coeffs_to_bath(coeffs):
+        """Rebuild a bath from environment exponential expansion coefficients."""
+        ck_real, vk_real, ck_imag, vk_imag, T = coeffs
+        return ExponentialBosonicEnvironment(
+            ck_real=list(ck_real),
+            vk_real=list(vk_real),
+            ck_imag=list(ck_imag),
+            vk_imag=list(vk_imag),
+            T=T,
+        )
     
     def run(self, store_states=False):
         """Execute HEOM simulations across all configured drive frequencies."""
-        assert self.sd_type in SD_TYPES, "Error: Invalid spectral density"
-        # bath
-        self._build_bath()
+        if self.sd_type not in SD_TYPES:
+            raise ValueError("Error: Invalid spectral density.")
 
-        exc_heom = np.zeros((len(self.omega_d_vals), self.n_time))
-        sp_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=complex)
-        states_heom = np.zeros((len(self.omega_d_vals), self.n_time), dtype=object) if store_states else None
+        bath = self._build_bath()
+        bath_coeffs = self._bath_to_coeffs(bath)
 
-        worker = partial(self._worker, store_states=store_states)
+        worker = partial(self._worker, bath_coeffs=bath_coeffs, store_states=store_states)
 
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-            if store_states:
-                for idx, (exc, sp, states) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="HEOM simulations")):
-                    exc_heom[idx, :] = exc
-                    sp_heom[idx, :] = sp
-                    states_heom[idx, :] = states
-                return (exc_heom, sp_heom, states_heom)
-            else:
-                for idx, (exc, sp) in enumerate(tqdm(executor.map(worker, self.omega_d_vals),
-                                                    total=len(self.omega_d_vals),
-                                                    desc="HEOM simulations")):
-                    exc_heom[idx, :] = exc
-                    sp_heom[idx, :] = sp
-                
-                return (exc_heom, sp_heom)
+        return run_parallel(
+            omega_d_vals=self.omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
+            desc="HEOM simulations",
+        )
     
     def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
         """Compute Husimi-Q functions for an HEOM run at a given drive frequency."""
-        self._build_bath()
+        states = self._get_states(omega_d)
+        return parallel_eval_husimi(
+            states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc="HEOM Husimi-Q Computation"
+        )
 
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        Qt = np.zeros((self.n_time, len(theta), len(phi)))
-
-        eval_husimi_partial = partial(self.eval_husimi,
-                                      theta=theta,
-                                      phi=phi,
-                                      method=method,
-                                      tls_idx=tls_idx)
-
-        with ProcessPoolExecutor(max_workers=max(1, multiprocessing.cpu_count()-1)) as executor:
-        
-            for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states), 
-                                            total=len(states), 
-                                            desc="HEOM Husimi-Q Computation")):
-                Qt[t_idx] = Q
-        
-        return Qt
-
-    def phase_sim(self, omega_d):
-        """Compute TLS phase trajectories for an HEOM run."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        
-        return self._phase_sim_helper(states)
-        
-    def pearson_sim(self, omega_d, window_size, overlap):
-        """Compute rolling Pearson correlations from HEOM temporal states."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "pearson", window_size, overlap)
-    
-    def plv_sim(self, omega_d, window_size, overlap):
-        """Compute rolling phase locking values from HEOM temporal states."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-
-        return self._cor_sim_helper(states, "plv", window_size, overlap)
-
-    def phase_corr_sim(self, omega_d, corr_names, window_size=None, overlap=None):
-        """Compute phase trajectories and requested correlations for HEOM."""
-        self._build_bath()
-
-        exc, sp, states = self._worker(omega_d, store_states=True)
-        phases, t = self._phase_sim_helper(states)
-        if isinstance(corr_names, list):
-            corrs = []
-            for corr_name in corr_names:
-                corr, t = self._cor_sim_helper(states, corr_name, window_size, overlap)
-                corrs.append(corr)
-            return phases, corrs, t
-
-        corr, t = self._cor_sim_helper(states, corr_names, window_size, overlap)
-        return phases, corr, t
+    def _get_states(self, omega_d):
+        bath = self._build_bath()
+        bath_coeffs = self._bath_to_coeffs(bath)
+        _, _, states = self._worker(omega_d, bath_coeffs, store_states=True)
+        return states
