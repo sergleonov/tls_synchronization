@@ -103,9 +103,9 @@ class TEMPO(Solver):
 
         self.tempo_params = oqupy.TempoParameters(dt=self.dt, tcut=self.tcut, epsrel=self.epsrel)
 
-        # initial state
-        self.psi0 = np.array([[0] for _ in range(2*self.n_tls)])
-        self.psi0[-1] = [1] # ground state
+        # initial state 
+        self.psi0 = np.zeros((2 ** self.n_tls, 1))
+        self.psi0[-1] = 1  # ground state
         self.rho0 = np.matmul(self.psi0, np.transpose(self.psi0))
 
     def __getstate__(self):

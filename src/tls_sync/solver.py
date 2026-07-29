@@ -152,7 +152,7 @@ class Solver:
             self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
             self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
         if self._name == "Tiered":
-            self.a = self._tensor([qt.qeye(2), qt.qeye(2), qt.destroy(self.Nb)])
+            self.a = self._tensor([qt.qeye(2)] * self.n_tls + [qt.destroy(self.Nb)])
             n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
             self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * (self.a))
             self.c_ops.append(np.sqrt(self.lam * (n_th_mode)) * (self.a.dag()))

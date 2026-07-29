@@ -11,7 +11,8 @@ def run_parallel(omega_d_vals, worker, n_time, store_states, desc, max_workers=N
     sp = np.zeros((len(omega_d_vals), n_time), dtype=complex)
     states = np.zeros((len(omega_d_vals), n_time), dtype=object) if store_states else None
 
-    max_workers = max(1, multiprocessing.cpu_count() - 1)
+    if max_workers is None:
+        max_workers = max(1, multiprocessing.cpu_count() - 1)
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         if store_states:
             for idx, result in enumerate(tqdm(executor.map(worker, omega_d_vals),
@@ -41,7 +42,8 @@ def parallel_eval_husimi(states, eval_husimi, theta, phi, method, tls_idx, desc,
                                   phi=phi,
                                   method=method,
                                   tls_idx=tls_idx)
-    max_workers = max(1, multiprocessing.cpu_count() - 1)
+    if max_workers is None:
+        max_workers = max(1, multiprocessing.cpu_count() - 1)
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         for t_idx, Q in enumerate(tqdm(executor.map(eval_husimi_partial, states),
                                         total=len(states),
