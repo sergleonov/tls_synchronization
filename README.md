@@ -1,6 +1,6 @@
-# tls_synchronization
+# TLS Synchronization
 
-A Python package for driven two-level system (TLS) synchronization, open quantum system solvers, and analysis tools.
+A Python package for simulating dynamics of open quantum systems in the context of Broadband Cryogenic Transient Dielectric Spectroscopy (BCTDS) experiment for understanding phase synchronization of the two-level defects in amorphous materials. 
 
 ## Project overview
 
