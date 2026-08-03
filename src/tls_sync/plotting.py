@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import matplotlib.animation as anim
 from .utils import find_max, find_min
 import numpy as np
@@ -13,8 +14,8 @@ def set_plot_format(scale=1, title_scale=1):
         "font.sans-serif": ["Helvetica"],
         "axes.titlesize": 16 * title_scale,
         "axes.labelsize": 14 * scale,
-        "xtick.labelsize": 12 * scale,
-        "ytick.labelsize": 12 * scale,
+        "xtick.labelsize": 14* scale,
+        "ytick.labelsize": 14 * scale,
         "legend.fontsize": 11 * scale,
         "figure.titlesize": 16 * title_scale,
         "axes.titleweight": "normal",
@@ -339,6 +340,8 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tl
             ax.set_ylabel(r"$\theta$")
             ax.set_aspect('auto')
             images.append(image)
+            ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=7))
+            ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=4))
 
     fig.colorbar(images[-1], cax=cax, orientation="horizontal").set_label(r"$Q(\theta,\phi)$")
     fig.suptitle(f"Husimi Q Snapshots | Drive {omega_d} GHz\n"

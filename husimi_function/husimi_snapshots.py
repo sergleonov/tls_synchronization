@@ -95,8 +95,8 @@ def main():
     tls_idx = 0
     method = "ptrace"
 
-    omega_d = 3.75
-    theta = np.linspace(0, np.pi, 100)
+    omega_d = 3.45
+    theta = np.linspace(0, np.pi, 80)
     phi = np.linspace(0, 2*np.pi, 80)
     
     Qts = []
@@ -105,9 +105,7 @@ def main():
         Qts.append(solver.husimi_sim(omega_d, theta, phi, method=method, tls_idx=tls_idx))
         labels.append(solver.get_name())
 
-    
-
-    set_plot_format(scale=2, title_scale=2)
+    set_plot_format(scale=2.6, title_scale=2.2)
 
     # first half
     snapshots = np.linspace(0, T_total/2-50, 4)
