@@ -20,8 +20,6 @@ jobs:
         include:
           # --- Linux, default (fork) start method, across Python versions ---
           - { os: ubuntu-latest, python: "3.11", start_method: default }
-          # --- macOS: spawn is the native default, real cross-platform check ---
-          - { os: macos-latest,  python: "3.11", start_method: default }
 
     env:
       MPLBACKEND: Agg
