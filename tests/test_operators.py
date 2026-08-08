@@ -46,14 +46,7 @@ def test_operator_dimensions(any_solver):
 
 def test_tempo_initial_state_dimension():
     from tls_sync import TEMPO
-    # comment out this test until OquPy is fixed
-    # for n_tls, freqs in [(2, [3.5, 4.0]), (3, [3.4, 3.7, 4.1])]:
-    #     kw = dict(BASE)
-    #     kw.update(n_tls=n_tls, tls_freqs=freqs)
-    #     s = TEMPO(**kw, gamma_bath=0.5, tcut=1.0, epsrel=1e-3)
-    #     assert s.rho0.shape == (2 ** n_tls, 2 ** n_tls)
-    #     assert np.isclose(np.trace(s.rho0).real, 1.0)
-    for n_tls, freqs in [(2, [3.5, 4.0])]:
+    for n_tls, freqs in [(2, [3.5, 4.0]), (3, [3.4, 3.7, 4.1])]:
         kw = dict(BASE)
         kw.update(n_tls=n_tls, tls_freqs=freqs)
         s = TEMPO(**kw, gamma_bath=0.5, tcut=1.0, epsrel=1e-3)
