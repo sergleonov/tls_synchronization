@@ -800,7 +800,6 @@ name = "tls-synchronization"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "h5py" },
     { name = "matplotlib" },
     { name = "mpmath" },
     { name = "numpy" },
@@ -818,7 +817,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "h5py", specifier = ">=3.16.0" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "mpmath", specifier = ">=1.4.1" },
     { name = "numpy", specifier = ">=1.26.4" },
