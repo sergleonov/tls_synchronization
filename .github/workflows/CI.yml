@@ -1,44 +1,29 @@
-name: CI
+name: Unit tests
 on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
-  test:
-    name: py${{ matrix.python }} · ${{ matrix.os }} · mp=${{ matrix.start_method }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # --- Linux, default (fork) start method, across Python versions ---
-          - { os: ubuntu-latest, python: "3.12", start_method: default }
-    env:
-      MPLBACKEND: Agg
-      # Empty string => conftest leaves the platform default untouched.
-      TLS_MP_START: ${{ matrix.start_method == 'default' && '' || matrix.start_method }}
+  uv-test:
+    name: python
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install uv
-        # Pin to a specific release; bump as new versions come out.
-        uses: astral-sh/setup-uv@v10
+      - name: Checkout the repository
+        uses: actions/checkout@main
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
-          # Overrides the Python version in pyproject.toml / .python-version.
-          python-version: ${{ matrix.python }}
-      - name: Install package and test dependencies
-        # --locked fails if uv.lock is missing or out of date
-        run: uv sync --locked
-      - name: Show environment
-        run: |
-          uv run python -c "import numpy, scipy, qutip, oqupy; \
-            print('numpy', numpy.__version__); print('scipy', scipy.__version__); \
-            print('qutip', qutip.__version__); print('oqupy', getattr(oqupy,'__version__','?'))"
-      - name: Fast tests (no heavy simulations)
-        run: uv run pytest -m "not slow" -v --durations=10
-      - name: Full suite (including simulations)
-        run: uv run pytest -v --durations=15
+
+      - name: "Set up Python"
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run tests
+        run: uv run --frozen pytest  # Uses the Python version automatically installed by uv
