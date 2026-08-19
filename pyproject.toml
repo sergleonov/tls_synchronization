@@ -1,37 +1,38 @@
 [project]
-name = "tls_synchronization"
+name = "tls-synchronization"
 version = "0.1.0"
-description = "TLS synchronization and open quantum systems simulation tools."
+description = "Package for numerical simulations of Broadband Cryogenic Spectroscopy. "
 readme = "README.md"
+authors = [
+    { name = "Sergei Leonov", email = "sleonov27@amherst.edu" }
+]
 requires-python = ">=3.11"
 dependencies = [
-    "numpy>=1.26.4",
-    "matplotlib>=3.10.8",
-    "scipy>=1.17.1",
     "mpmath>=1.4.1",
-    "qutip>=5.2.3",
-    "oqupy>=0.5.0",
+    "matplotlib>=3.11.0",
+    "numpy>=1.26.4",
+    "pyqt5>=5.15.11",
+    "qutip>=5.3.1",
+    "scipy>=1.17.1",
     "tqdm>=4.68.3",
+    "oqupy",
 ]
 
-[project.optional-dependencies]
-test = [
-    "pytest>=7",
-    "pytest-cov",
-]
+[dependency-groups]
+dev = ["pytest"]
 
-[project.urls]
-"Source" = "https://example.com"
+[project.scripts]
+tls-synchronization = "tls_sync:main"
+
+[tool.uv.sources]
+oqupy = { git = "https://github.com/tempoCollaboration/OQuPy.git" }
+
+[tool.uv.build-backend]
+module-name = "tls_sync"
 
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 pythonpath = ["tests"]
