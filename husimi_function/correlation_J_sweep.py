@@ -125,7 +125,6 @@ def main():
                         n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
-            exit()
             corr_dict, t = tier.correlation_sim(omega_d, window_size, overlap)
             corrs = next(iter(corr_dict.values())) # first correlation
             correlation_map[j_idx, r_idx] = corrs[-1]

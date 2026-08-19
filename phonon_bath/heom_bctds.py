@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tls_sync import HEOM, Lindblad
 from tls_sync.plotting import plot_diff_map, plot_exc_map, plot_fft_map, plot_sp_map, compute_fft
+import os
 
 
 def main():
