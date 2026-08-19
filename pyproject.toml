@@ -19,7 +19,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "pytest>=9.1.1",
+    "sphinx>=9.0.4",
+    "sphinx-rtd-theme>=3.1.0",
+]
 
 [project.scripts]
 tls-synchronization = "tls_sync:main"
