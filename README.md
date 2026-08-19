@@ -1,98 +1,194 @@
 # TLS Synchronization
 
-A Python package for simulating dynamics of open quantum systems in the context of Broadband Cryogenic Transient Dielectric Spectroscopy (BCTDS) experiment for understanding phase synchronization of the two-level defects in amorphous materials. 
+A Python package for simulating the dynamics of open quantum systems in the
+context of **Broadband Cryogenic Transient Dielectric Spectroscopy (BCTDS)**,
+used to study the phase synchronization of two-level defects (TLS) in amorphous
+materials.
 
-## Project overview
+The package wraps several open-system solvers behind a common interface and
+provides analysis utilities for Husimi visualizations, correlation and
+phase-evolution plots, and phonon-bath dynamics.
 
-This repository provides a source-layout package under `src/tls_sync` with solver implementations for:
+---
 
-- HEOM (`tls_sync.heom`) for hierarchical equations of motion
-- TEMPO (`tls_sync.tempo`) for time-evolving matrix product operators
-- Tiered solver (`tls_sync.tiered`) for tiered environment with single mode and thermal bath
-- Lindblad master equation dynamics (`tls_sync.lindblad`)
-- FFT and plotting utilities in `tls_sync.plotting`
+## Features
 
-Example scripts in `husimi_function/` and `phonon_bath/` show how to use the package to generate Husimi visualizations, correlation plots, phase evolution, and bath dynamics.
+| Solver | Module | Method |
+| --- | --- | --- |
+| `HEOM` | `tls_sync.heom` | Hierarchical equations of motion (numerically exact for a Gaussian bath) |
+| `TEMPO` | `tls_sync.tempo` | Time-evolving matrix product operators (via [OQuPy](https://github.com/tempoCollaboration/OQuPy)) |
+| `TieredSolver` | `tls_sync.tiered` | Tiered environment: explicit single mode + thermal bath |
+| `Lindblad` | `tls_sync.lindblad` | Markovian master-equation dynamics (baseline) |
+
+Plus `tls_sync.plotting` (Husimi animations, correlation plots, FFT utilities),
+`tls_sync.parallel` (concurrent parameter sweeps), and `tls_sync.utils` (shared
+operators and helpers).
+
+## Requirements
+
+- **Python ≥ 3.12**
+- [**uv**](https://docs.astral.sh/uv/) for environment and dependency management
+- **git** — `oqupy` is installed directly from its upstream repository
 
 ## Installation
 
-Install the package in editable mode from the repo root:
-
 ```bash
-python3 -m pip install -e .
+# from the repository root
+uv sync --all-groups
 ```
 
-Install runtime dependencies manually if needed:
+This creates a `.venv` and installs runtime dependencies (`numpy`, `scipy`,
+`matplotlib`, `qutip`, `oqupy`, `mpmath`, `pyqt5`, `tqdm`) plus the `dev` group
+(`pytest`, `sphinx`, `sphinx-rtd-theme`). Use `uv sync` alone to skip dev tools.
+
+Verify the install:
 
 ```bash
-python3 -m pip install -r requirements.txt
+uv run python -c "from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO; print('ok')"
 ```
+
+> **Note:** the first sync needs network access to GitHub to fetch `oqupy`.
+
+## Quickstart
+
+```python
+from tls_sync.solver import HEOM
+from tls_sync.plotting import generate_husimi_anim, plot_correlations
+
+heom = HEOM(
+    tls_freqs=[3.75, 3.82],   # bare TLS frequencies
+    J=0.02,                   # TLS–TLS coupling
+    Omega_amp=0.1,            # drive amplitude
+    lam=0.002,                # system–bath coupling
+    gamma_bath=0.05,          # bath cutoff / relaxation rate
+    T=0.5,                    # temperature
+    Nk=3,                     # Matsubara terms
+    max_depth=5,              # HEOM hierarchy depth
+    T_total=400,              # total simulation time
+    T_drive=100.0,            # drive duration
+    dt=0.5,                   # time step
+    n_tls=2,                  # number of TLS
+    n_freqs=300,              # frequency-grid resolution
+    sd_type="drude",          # spectral-density model
+    ohmicity=None,            # ohmicity exponent (ohmic baths)
+)
+
+# result = heom.run()
+# plot_correlations(result)
+# generate_husimi_anim(result)
+```
+
+Exact constructor arguments and methods for each solver are in the
+[API reference](#documentation).
 
 ## Usage
 
-Once installed, import the package from anywhere in your environment:
+Import solvers from the aggregate `solver` module and analysis helpers from
+`plotting`:
 
 ```python
 from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
 from tls_sync.plotting import generate_husimi_anim, plot_correlations
 ```
 
-### Example
-
-```python
-from tls_sync.solver import HEOM
-from tls_sync.plotting import generate_husimi_anim
-
-heom = HEOM(
-    tls_freqs=[3.75, 3.82],
-    J=0.02,
-    Omega_amp=0.1,
-    lam=0.002,
-    gamma_bath=0.05,
-    T=0.5,
-    Nk=3,
-    max_depth=5,
-    T_total=400,
-    T_drive=100.0,
-    dt=0.5,
-    n_tls=2,
-    n_freqs=300,
-    sd_type="drude",
-    ohmicity=None,
-)
-
-# Run methods on the solver and visualize results
-```
+**Choosing a solver:** `Lindblad` is the cheap Markovian baseline; `HEOM` is
+numerically exact for a Gaussian bath (cost grows with `Nk` and `max_depth`);
+`TEMPO` handles strong coupling and long memory efficiently; `TieredSolver`
+treats one dominant mode explicitly alongside a residual thermal bath.
 
 ## Example scripts
 
-The repository includes the following example scripts:
+Run all scripts **from the repository root** so the installed package resolves
+without `sys.path` edits:
 
-- `husimi_function/correlation_J_sweep.py`
-- `husimi_function/correlation_plots.py`
-- `husimi_function/husimi_animation.py`
-- `husimi_function/phase_corr_plots.py`
-- `husimi_function/phase_plots.py`
-- `phonon_bath/heom_bctds.py`
-- `phonon_bath/heom_sweep_plot.py`
-- `phonon_bath/heom_sweep.py`
-- `phonon_bath/tempo_bctds.py`
-- `phonon_bath/tiered_bctds.py`
-- `phonon_bath/tiered_heom_bctds.py`
+```bash
+uv run python phonon_bath/heom_bctds.py
+uv run python husimi_function/husimi_animation.py
+```
 
-Run them from the repository root after installing the package to avoid modifying `sys.path`.
+**`husimi_function/`** — phase-space and synchronization diagnostics:
+`husimi_animation.py`, `husimi_snapshots.py`, `correlation_plots.py`,
+`correlation_heatmap.py`, `correlation_J_sweep.py`,
+`plot_saved_correlation_heatmap.py`, `phase_plots.py`, `phase_corr_plots.py`.
+
+**`phonon_bath/`** — BCTDS runs and bath dynamics: `bosonic_bath.py`,
+`heom_bctds.py`, `tempo_bctds.py`, `tiered_bctds.py`, `tiered_heom_bctds.py`,
+`heom_sweep.py`, `heom_sweep_plot.py`.
+
+Outputs (figures, animations, `.npz` data) are written to the corresponding
+`bctds_data/` and `bctds_figures/` directories.
 
 ## Configuration
 
-A simple configuration file, `config.json`, is included for solver defaults and can be extended as needed.
+Shared solver defaults live in `config.json` at the repository root. Load and
+unpack them into a solver, overriding individual values as needed:
+
+```python
+import json
+from pathlib import Path
+from tls_sync.solver import HEOM
+
+config = json.loads(Path("config.json").read_text())
+heom = HEOM(**{**config["solver_defaults"], "J": 0.05})
+```
+
+## Documentation
+
+Full documentation (getting started, user guide, theory background, API
+reference, and development notes) is built with Sphinx and the Read the Docs
+theme.
+
+```bash
+cd docs
+uv run make html          # output in docs/build/html/
+```
+
+To build without the wrapper:
+
+```bash
+uv run sphinx-build -b html docs/source docs/build/html
+```
+
+## Testing
+
+```bash
+uv run pytest                 # full suite
+uv run pytest -m "not slow"   # skip end-to-end simulations
+uv run pytest -m slow         # only the slow simulations
+```
+
+The `slow` marker tags full simulation runs. Because parameter sweeps ship
+solver objects to worker processes, solver state must remain picklable —
+`test_pickling.py` and `test_parallel.py` guard this.
+
+## Project layout
+
+```
+tls_synchronization/
+├── src/tls_sync/        # installable package (src layout)
+├── phonon_bath/         # BCTDS / phonon-bath scripts + data
+├── husimi_function/     # Husimi & correlation scripts + output
+├── tests/               # pytest suite
+├── docs/                # Sphinx documentation
+├── config.json          # shared solver defaults
+├── pyproject.toml       # packaging + tooling metadata
+└── setup.cfg            # additional packaging metadata
+```
 
 ## Development
 
-- Package source is under `src/tls_sync`
-- Use `setup.cfg` and `pyproject.toml` for packaging metadata
-- Add new solver modules or plotting utilities inside `src/tls_sync`
+- Package source lives in `src/tls_sync`; edits are picked up on the next
+  `uv run` without reinstalling.
+- Write NumPy- or Google-style docstrings — the API docs are generated from them.
+- Re-export new solver classes from `tls_sync/solver.py` and add them to the
+  docs API page.
+- Keep example scripts runnable from the repository root and route shared
+  defaults through `config.json`.
 
-## Notes
+## Dependencies
 
-- This repo is intended for numerical experiments with TLS synchronization and bath dynamics.
-- The package uses `numpy`, `matplotlib`, `scipy`, `qutip`, `oqupy`, and `tqdm`.
+`numpy`, `scipy`, `matplotlib`, `qutip`, `oqupy`, `mpmath`, `pyqt5`, `tqdm`.
+
+## Author
+
+Sergei Leonov — <sleonov27@amherst.edu>
