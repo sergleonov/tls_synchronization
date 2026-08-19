@@ -4,6 +4,7 @@
 import os
 import sys
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version as _get_version
  
 # -- Path setup --------------------------------------------------------------
 # The package is normally imported from the installed environment. Adding the
@@ -14,8 +15,12 @@ sys.path.insert(0, os.path.abspath("../../src"))
 project = "TLS Synchronization"
 author = "Sergei Leonov"
 copyright = f"{datetime.now():%Y}, {author}"
-release = "0.1.0"
-version = "0.1.0"
+try:
+    release = _get_version("tls-synchronization")  # full version, e.g. "0.1.0"
+except PackageNotFoundError:
+    # Fallback when building against an uninstalled source tree.
+    release = "0.0.0+unknown"
+version = ".".join(release.split(".")[:2])          # short X.Y, e.g. "0.1"
  
 # -- General configuration ----------------------------------------------------
 extensions = [

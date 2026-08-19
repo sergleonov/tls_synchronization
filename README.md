@@ -9,6 +9,8 @@ The package wraps several open-system solvers behind a common interface and
 provides analysis utilities for Husimi visualizations, correlation and
 phase-evolution plots, and phonon-bath dynamics.
 
+📖 **Documentation:** <https://tls-synchronization.readthedocs.io/en/latest/>
+
 ---
 
 ## Features
@@ -26,7 +28,7 @@ operators and helpers).
 
 ## Requirements
 
-- **Python ≥ 3.12**
+- **Python ≥ 3.11**
 - [**uv**](https://docs.astral.sh/uv/) for environment and dependency management
 - **git** — `oqupy` is installed directly from its upstream repository
 
@@ -79,7 +81,7 @@ heom = HEOM(
 ```
 
 Exact constructor arguments and methods for each solver are in the
-[API reference](#documentation).
+[API reference](https://tls-synchronization.readthedocs.io/en/latest/api.html).
 
 ## Usage
 
@@ -135,8 +137,10 @@ heom = HEOM(**{**config["solver_defaults"], "J": 0.05})
 ## Documentation
 
 Full documentation (getting started, user guide, theory background, API
-reference, and development notes) is built with Sphinx and the Read the Docs
-theme.
+reference, and development notes) is hosted at
+**<https://tls-synchronization.readthedocs.io/en/latest/>**.
+
+Build it locally with Sphinx and the Read the Docs theme:
 
 ```bash
 cd docs
