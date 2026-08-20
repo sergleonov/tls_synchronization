@@ -59,7 +59,7 @@ Regardless of solver, the pattern is the same:
 
 .. code-block:: python
 
-   from tls_sync.solver import HEOM
+   from tls_sync import HEOM
    from tls_sync.plotting import plot_correlations
 
    heom = HEOM(

@@ -41,23 +41,5 @@ Test settings live in ``pyproject.toml`` under ``[tool.pytest.ini_options]``:
 Suite overview
 ==============
 
-The suite mixes fast unit tests with heavier integration tests:
-
-===================================  ================================================
-Test module                          Focus
-===================================  ================================================
-``test_imports.py``                  Package and public API import cleanly.
-``test_operators.py``                Operator construction and algebra.
-``test_utils.py``                    Utility / helper functions.
-``test_correlations.py``             Correlation calculations.
-``test_husimi.py``                   Husimi Q-function generation.
-``test_plotting.py``                 Plotting utilities.
-``test_freq_sweep.py``               Frequency-sweep behavior.
-``test_heom_bath.py``                HEOM bath / spectral-density handling.
-``test_solver_phase_correlations.py`` Phase-correlation results from the solvers.
-``test_parallel.py``                 Parrallel parameter sweeps.
-``test_pickling.py``                 Solver objects remain picklable for workers.
-===================================  ================================================
-
-Shared fixtures and helpers live in ``conftest.py`` and the underscore-prefixed
+The suite mixes fast unit tests with heavier integration tests. Shared fixtures and helpers live in ``conftest.py`` and the underscore-prefixed
 modules (``_config.py``, ``_helpers.py``, ``_workers.py``).
