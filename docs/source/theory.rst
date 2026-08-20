@@ -99,12 +99,17 @@ distribution over phase space. It is convenient for visualizing the state and,
 in particular, its phase — which is exactly what the synchronization diagnostics
 in ``husimi_function/`` exploit.
 
-Further reading
+References
 ==============
 
 .. note::
 
-   Populate this section with the specific references your group relies on.
-   Common starting points include: Tanimura's reviews of HEOM; Strathearn *et
-   al.* (2018) on TEMPO / process tensors; Breuer & Petruccione, *The Theory of
-   Open Quantum Systems*; and Phillips' work on TLS in amorphous solids.
+   Müller, Clemens, Jared H. Cole, and Jürgen Lisenfeld. "Towards understanding two-level-systems in amorphous solids: insights from quantum circuits." Reports on Progress in Physics 82, no. 12 (2019): 124501.
+   Strathearn, Aidan, Peter Kirton, Dainius Kilda, Jonathan Keeling, and Brendon William Lovett. "Efficient non-Markovian quantum dynamics using time-evolving matrix product operators." Nature communications 9, no. 1 (2018): 3322.
+   Fux, Gerald E., Piper Fowler-Wright, Joel Beckles, Eoin P. Butler, Paul R. Eastham, Dominic Gribben, Jonathan Keeling et al. "OQuPy: A Python package to efficiently simulate non-Markovian open quantum systems with process tensors." The Journal of Chemical Physics 161, no. 12 (2024).
+   Johansson, J. Robert, Paul D. Nation, and Franco Nori. "QuTiP: An open-source Python framework for the dynamics of open quantum systems." Computer physics communications 183, no. 8 (2012): 1760-1772.
+   Tanimura, Yoshitaka. "Numerically “exact” approach to open quantum dynamics: The hierarchical equations of motion (HEOM)." The Journal of chemical physics 153, no. 2 (2020).
+   Settimo, Federico, and Bassano Vacchini. “Synchronization Effects in a Periodically Driven Two-Level System.” Physical Review A 113, no. 2 (2026): 022213. https://doi.org/10.1103/cswq-l3c8.
+   Lambert, Neill, Tarun Raheja, Simon Cross, et al. “QuTiP-BoFiN: A Bosonic and Fermionic Numerical Hierarchical-Equations-of-Motion Library with Applications in Light-Harvesting, Quantum Control, and Single-Molecule Electronics.” Physical Review Research 5, no. 1 (2023): 013181. https://doi.org/10.1103/PhysRevResearch.5.013181.
+   Zhang, Liyun, Zhao Wang, Yucheng Wang, et al. “Quantum Synchronization of a Single Trapped-Ion Qubit.” Physical Review Research 5, no. 3 (2023): 033209. https://doi.org/10.1103/PhysRevResearch.5.033209.
+   Wang, Qianxu, Juan S. Salcedo-Gallo, Sara Magdalena Gómez, et al. “Probing the Dynamics of Two-Level System Defect Ensembles via Broadband Cryogenic Transient Dielectric Spectroscopy.” arXiv:2505.18263. Preprint, arXiv, July 22, 2026. https://doi.org/10.48550/arXiv.2505.18263.
