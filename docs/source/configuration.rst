@@ -78,9 +78,3 @@ shared defaults and override individual values per run:
 
    params = {**config["solver_defaults"], "J": 0.05, "T": 1.0}
    heom = HEOM(**params)
-
-.. tip::
-
-   Keep ``config.json`` under version control so that each committed experiment
-   is reproducible, and record any per-run overrides in the script itself or in
-   a short comment.

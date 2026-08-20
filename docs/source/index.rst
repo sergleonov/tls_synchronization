@@ -68,7 +68,6 @@ example scripts.
 
    installation
    quickstart
-   configuration
 
 .. toctree::
    :maxdepth: 2

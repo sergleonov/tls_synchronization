@@ -35,7 +35,6 @@ def test_pearson_evolution_rejects_bad_overlap(lindblad):
 
 
 # --- via the public simulation API --------------------------------------------
-@pytest.mark.slow
 def test_phase_sim_shapes_and_range(qutip_solver):
     phases, t = qutip_solver.phase_sim(OMEGA_D)
     assert len(phases) == qutip_solver.n_tls
@@ -46,7 +45,6 @@ def test_phase_sim_shapes_and_range(qutip_solver):
         assert np.all(ph >= -np.pi - 1e-9) and np.all(ph <= np.pi + 1e-9)
 
 
-@pytest.mark.slow
 def test_pearson_sim_structure_and_bounds(lindblad):
     corr, t = lindblad.pearson_sim(OMEGA_D, window_size=WINDOW, overlap=1)
     assert isinstance(corr, dict)
@@ -57,7 +55,6 @@ def test_pearson_sim_structure_and_bounds(lindblad):
     assert np.all(valid >= -1.0 - 1e-9) and np.all(valid <= 1.0 + 1e-9)
 
 
-@pytest.mark.slow
 def test_plv_sim_bounds(lindblad):
     corr, _ = lindblad.plv_sim(OMEGA_D, window_size=WINDOW, overlap=1)
     (series,) = corr.values()
@@ -65,7 +62,6 @@ def test_plv_sim_bounds(lindblad):
     assert np.all(valid >= -1e-9) and np.all(valid <= 1.0 + 1e-9)
 
 
-@pytest.mark.slow
 def test_phase_corr_sim_multiple_metrics(lindblad):
     names = ["pearson", "plv", "connected", "entropy"]
     phases, corrs, t = lindblad.phase_corr_sim(
@@ -82,7 +78,6 @@ def test_phase_corr_sim_multiple_metrics(lindblad):
     assert np.all(valid >= -1e-9)
 
 
-@pytest.mark.slow
 def test_invalid_correlation_name_raises(lindblad):
     states = lindblad._get_states(OMEGA_D)
     with pytest.raises(ValueError):

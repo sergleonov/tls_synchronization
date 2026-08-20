@@ -16,14 +16,14 @@ Solvers and plotting utilities are exposed through two convenience modules:
 
 .. code-block:: python
 
-   from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+   from tls_sync import HEOM, Lindblad, TieredSolver, TEMPO
    from tls_sync.plotting import generate_husimi_anim, plot_correlations
 
 Building a solver
 =================
 
 Every solver is configured through its constructor. The example below sets up a
-two-TLS HEOM simulation with a driven Drude spectral density:
+two-TLS HEOM simulation with a Drude spectral density for a 100ns drive pulse:
 
 .. code-block:: python
 

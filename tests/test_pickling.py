@@ -57,7 +57,6 @@ def test_heom_worker_partial_is_picklable(heom_drude):
     pickle.loads(pickle.dumps(worker))   # must not raise
 
 
-@pytest.mark.slow
 def test_tempo_process_tensor_worker_is_picklable(tempo):
     import oqupy
     pt = oqupy.pt_tempo_compute(

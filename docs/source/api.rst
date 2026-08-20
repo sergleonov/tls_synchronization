@@ -13,9 +13,19 @@ authoritative reference for constructor arguments and method behavior.
 Solvers
 =======
 
+.. currentmodule:: tls_sync
+
+All solvers share the :class:`Solver` base class, so the analysis methods
+(``run``, ``pearson_sim``, ``husimi_sim``, ``phase_sim``, ``phase_corr_sim``,
+``correlation_sim``, ``final_corr_from_states``, ``get_name``, ...) are
+inherited. They are documented on :class:`Solver` and, thanks to
+``:inherited-members:``, repeated on each concrete solver so every solver page
+is self-contained.
+
 Solver
 ------
-.. automodule:: tls_sync.solver
+
+.. autoclass:: Solver
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,32 +33,36 @@ Solver
 HEOM
 ----
 
-.. automodule:: tls_sync.heom
+.. autoclass:: HEOM
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 
 TEMPO
 -----
 
-.. automodule:: tls_sync.tempo
+.. autoclass:: TEMPO
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 
 Tiered solver
 -------------
 
-.. automodule:: tls_sync.tiered
+.. autoclass:: TieredSolver
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 
 Lindblad
 --------
 
-.. automodule:: tls_sync.lindblad
+.. autoclass:: Lindblad
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
 

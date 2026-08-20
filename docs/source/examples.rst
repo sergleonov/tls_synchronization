@@ -32,8 +32,7 @@ Scripts in ``husimi_function/`` focus on phase-space (Husimi) visualization and
 on correlation / phase-synchronization diagnostics.
 
 ``husimi_animation.py``
-   Produces an animated Husimi Q-function of the driven TLS as the system
-   evolves.
+   Produces an evolution of Husimi-Q function for 2 interacting TLSs.
 
 ``husimi_snapshots.py``
    Renders static Husimi snapshots at selected times, useful for figures where
@@ -43,21 +42,16 @@ on correlation / phase-synchronization diagnostics.
    Plots time-resolved correlations between the two-level systems.
 
 ``correlation_heatmap.py``
-   Computes and renders a two-dimensional correlation heatmap.
+   Computes and plots final time correlation values between TLSs for a chosen metric.
 
 ``correlation_J_sweep.py``
-   Sweeps the TLS–TLS coupling ``J`` and plots how correlations respond — a
-   direct probe of synchronization onset.
-
-``plot_saved_correlation_heatmap.py``
-   Re-renders a correlation heatmap from previously saved data without rerunning
-   the simulation.
+   Sweeps the TLS–TLS coupling ``J`` and TLS frequency ratio and plots the heatmap.  
 
 ``phase_plots.py``
-   Plots the phase evolution of each TLS over time.
+   Simulates the phase evolution and phase differences between TLSs over time.
 
 ``phase_corr_plots.py``
-   Plots phase-correlation diagnostics between the TLS.
+   Plots phase difference and time-dependent correlations between TLSs.
 
 Phonon-bath / BCTDS examples
 ============================
@@ -65,37 +59,29 @@ Phonon-bath / BCTDS examples
 Scripts in ``phonon_bath/`` set up phonon-bath models and run BCTDS-style
 simulations across the different solvers.
 
-``bosonic_bath.py``
-   Constructs and inspects a bosonic (phonon) bath / spectral density used by
-   the other scripts.
-
 ``heom_bctds.py``
-   Runs a BCTDS simulation with the HEOM solver.
+   Runs a BCTDS simulation with the HEOM solver comparing against Markovian solver.
 
 ``tempo_bctds.py``
-   Runs the same class of BCTDS simulation with the TEMPO solver.
+   Runs a BCTDS simulation with the TEMPO solver comparing against Markovian solver.
 
 ``tiered_bctds.py``
-   Runs a BCTDS simulation with the tiered (single mode + thermal bath) solver.
+   Runs a BCTDS simulation with the Tiered solver comparing against Markovian solver.
 
 ``tiered_heom_bctds.py``
-   Runs a combined tiered + HEOM treatment of the BCTDS problem.
+   Compares the BCTDS response of Tiered and HEOM solvers to Markovian simulation.
 
 ``heom_sweep.py``
-   Performs a parameter sweep using the HEOM solver, distributing runs with the
-   helpers in :mod:`tls_sync.parallel`.
+   Performs a power law spectral density order sweep for the HEOM solver.
 
-``heom_sweep_plot.py``
-   Plots the aggregated results produced by ``heom_sweep.py``.
-
-A minimal end-to-end example
+A minimal example
 ============================
 
 The following mirrors what the scripts do, condensed to the essentials:
 
 .. code-block:: python
 
-   from tls_sync.solver import HEOM
+   from tls_sync import HEOM
    from tls_sync.plotting import generate_husimi_anim, plot_correlations
 
    heom = HEOM(
@@ -108,10 +94,3 @@ The following mirrors what the scripts do, condensed to the essentials:
    # result = heom.run()
    # plot_correlations(result)
    # generate_husimi_anim(result)
-
-.. tip::
-
-   Start from ``heom_bctds.py`` for a single representative run, then move to
-   ``heom_sweep.py`` when you want to scan a parameter. Use
-   ``plot_saved_correlation_heatmap.py`` and ``heom_sweep_plot.py`` to iterate
-   on figures without paying for the simulation again.

@@ -86,17 +86,15 @@ Adding a new solver or utility
 =============================
 
 1. Add the module under ``src/tls_sync/`` (for example
-   ``src/tls_sync/my_solver.py``).
-2. Re-export any public class from ``src/tls_sync/solver.py`` so users can import
-   it alongside the existing solvers.
+   ``src/tls_sync/my_solver.py``) and to ``__init__.py`` to simplify imports.
+2. Add tests under ``tests/`` mirroring the existing files, and mark full
+   end-to-end runs (see :doc:`testing`).
 3. Add an ``automodule`` block for it in ``docs/source/api.rst``.
-4. Add tests under ``tests/`` mirroring the existing files, and mark full
-   end-to-end runs with the ``slow`` marker (see :doc:`testing`).
 
 Contributing workflow
 =====================
 
 1. Create a feature branch.
 2. Make the change with accompanying tests and docstrings.
-3. Run the fast suite (``uv run pytest -m "not slow"``) and build the docs.
+3. Run the test suite (``uv run pytest"``) and build the docs.
 4. Open a pull request describing the change and any new parameters or scripts.

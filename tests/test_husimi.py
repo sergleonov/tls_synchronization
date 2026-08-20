@@ -32,7 +32,6 @@ def test_eval_husimi_ptrace_requires_index(any_solver):
         any_solver.eval_husimi(any_solver.rho0, THETA, PHI, method="ptrace", tls_idx=None)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("method", ["avg", "diff", "ptrace"])
 def test_husimi_sim_shapes(any_solver, method):
     tls_idx = 0 if method == "ptrace" else None
@@ -41,7 +40,6 @@ def test_husimi_sim_shapes(any_solver, method):
     assert np.isfinite(Qt).all()
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("fixture_name", ["lindblad", "tempo"])
 def test_husimi_sim_avg_is_nonnegative(request, fixture_name):
     # Lindblad and TEMPO produce completely-positive dynamics, so the reduced
@@ -51,7 +49,6 @@ def test_husimi_sim_avg_is_nonnegative(request, fixture_name):
     assert Qt.min() > -1e-9
 
 
-@pytest.mark.slow
 def test_husimi_sim_heom_positivity_note(heom_drude):
     # A truncated HEOM hierarchy is not guaranteed completely positive, so the
     # reduced state can carry small negative eigenvalues and the Husimi Q can dip

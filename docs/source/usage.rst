@@ -9,33 +9,16 @@ differ, and the shared workflow for running simulations and analyzing results.
    :local:
    :depth: 1
 
-Package layout
-==============
-
-The package uses a ``src`` layout under ``src/tls_sync``:
-
-===========================  =====================================================
-Module                       Responsibility
-===========================  =====================================================
-``tls_sync.solver``          Convenience re-exports of all solver classes.
-``tls_sync.heom``            Hierarchical equations of motion (HEOM) solver.
-``tls_sync.tempo``           TEMPO / process-tensor MPO solver.
-``tls_sync.tiered``          Tiered environment (single mode + thermal bath).
-``tls_sync.lindblad``        Lindblad master-equation solver.
-``tls_sync.plotting``        Husimi animations, correlation plots, FFT utilities.
-``tls_sync.parallel``        Helpers for running parameter sweeps concurrently.
-``tls_sync.utils``           Shared operators, helpers, and small numerics.
-===========================  =====================================================
 
 Importing
 =========
 
-Import solver classes from the aggregate ``solver`` module and analysis helpers
+Import solver classes from ``tls_sync`` and analysis helpers
 from ``plotting``:
 
 .. code-block:: python
 
-   from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
+   from tls_sync import HEOM, Lindblad, TieredSolver, TEMPO
    from tls_sync.plotting import generate_husimi_anim, plot_correlations
 
 Choosing a solver
@@ -45,12 +28,11 @@ Each solver trades accuracy against cost differently. As a rough guide:
 
 **Lindblad** (:class:`~tls_sync.lindblad.Lindblad`)
    A Markovian master equation. Cheapest and most robust; appropriate when the
-   bath is memoryless (weak coupling, fast bath). Use it as a baseline and a
-   sanity check for the non-Markovian solvers.
+   bath is memoryless (weak coupling, fast bath). Use it as a baseline for the non-Markovian solvers.
 
 **HEOM** (:class:`~tls_sync.heom.HEOM`)
    Numerically exact for a Gaussian bath with a given spectral density,
-   capturing non-Markovian memory through an auxiliary-density hierarchy.
+   capturing non-Markovian memory through an auxiliary-density operator hierarchy.
    Accuracy is controlled by the Matsubara count (``Nk``) and the hierarchy
    truncation (``max_depth``); cost grows quickly with both.
 
@@ -93,17 +75,17 @@ Regardless of solver, the pattern is the same:
 Plotting and analysis
 =====================
 
-:mod:`tls_sync.plotting` provides the visualization surface used throughout the
-example scripts, including Husimi Q-function animations
-(:func:`~tls_sync.plotting.generate_husimi_anim`) and correlation plots
-(:func:`~tls_sync.plotting.plot_correlations`), along with FFT helpers for
+:mod:`tls_sync.plotting` provides the visualization scripts used throughout the
+examples, including Husimi Q-function animations
+(:func:`~tls_sync.plotting.generate_husimi_anim`), correlation plots
+(:func:`~tls_sync.plotting.plot_correlations`), along with phase-V visualization for
 spectral analysis. See the :doc:`api` for the complete list.
 
 Parameter sweeps
 ===============
 
-For scans over a parameter (for example the coupling ``J`` or the temperature
-``T``), :mod:`tls_sync.parallel` provides helpers to distribute independent runs
+For scans over a parameter (for example the coupling ``J`` or the drive frequency
+``omega_d``), :mod:`tls_sync.parallel` provides helpers to distribute independent runs
 across processes. The ``phonon_bath/heom_sweep.py`` and
 ``husimi_function/correlation_J_sweep.py`` scripts demonstrate this pattern; see
 :doc:`examples`.
