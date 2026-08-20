@@ -2,10 +2,6 @@
 Installation
 ============
 
-This project uses `uv <https://docs.astral.sh/uv/>`_ for dependency management
-and environment setup. The instructions below get you from a fresh checkout to
-a working, importable package.
-
 .. contents:: On this page
    :local:
    :depth: 1
@@ -36,6 +32,10 @@ for alternatives (Homebrew, pipx, etc.).
 
 Installing the project
 ======================
+Clone the repo into your working directory:
+.. code-block:: bash
+
+   git clone https://github.com/sergleonov/tls_synchronization.git
 
 From the repository root, install the project together with its development
 dependency groups:

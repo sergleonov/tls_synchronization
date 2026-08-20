@@ -4,7 +4,7 @@
 TLS Synchronization
 ===================
 
-**TLS Synchronization** is a Python package for simulating the dynamics of
+**TLS Synchronization** is a Python package backed by QuTiP and OQyPy for simulating the dynamics of
 open quantum systems in the context of *Broadband Cryogenic Transient
 Dielectric Spectroscopy* (BCTDS). Its goal is to help understand the phase
 synchronization of two-level defects (two-level systems, or TLS) in amorphous
@@ -60,7 +60,7 @@ At a glance
    # Run methods on the solver and visualize the results.
 
 See :doc:`quickstart` for a complete first run, and :doc:`examples` for the
-bundled example scripts.
+example scripts.
 
 .. toctree::
    :maxdepth: 2

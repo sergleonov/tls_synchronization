@@ -13,13 +13,8 @@ authoritative reference for constructor arguments and method behavior.
 Solvers
 =======
 
-The :mod:`tls_sync.solver` module re-exports the solver classes for convenient
-importing:
-
-.. code-block:: python
-
-   from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO
-
+Solver
+------
 .. automodule:: tls_sync.solver
    :members:
    :undoc-members:
@@ -77,14 +72,6 @@ Utilities
 =========
 
 .. automodule:: tls_sync.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Package root
-============
-
-.. automodule:: tls_sync
    :members:
    :undoc-members:
    :show-inheritance:
