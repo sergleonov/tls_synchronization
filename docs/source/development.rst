@@ -25,7 +25,7 @@ Repository layout
    └── setup.cfg            # additional packaging metadata
 
 Development environment
-======================
+=======================
 
 Install everything, including the ``dev`` group (pytest + Sphinx):
 
@@ -37,7 +37,7 @@ Because the project is installed into the managed environment, edits to files
 under ``src/tls_sync`` are picked up on the next ``uv run`` without reinstalling.
 
 Building the documentation
-=========================
+==========================
 
 The documentation uses Sphinx with the Read the Docs theme. Build the HTML
 locally from the ``docs`` directory:
@@ -58,7 +58,7 @@ To build without the ``make`` wrapper:
    uv run sphinx-build -b html docs/source docs/build/html
 
 Regenerating the API stubs
--------------------------
+--------------------------
 
 The :doc:`api` page uses ``automodule`` directives and updates automatically
 from docstrings. If you prefer to regenerate per-module stub files (the
@@ -71,19 +71,14 @@ from docstrings. If you prefer to regenerate per-module stub files (the
 Coding conventions
 ==================
 
-- **Docstrings drive the API docs.** Write NumPy- or Google-style docstrings on
-  public classes, methods, and functions so the :doc:`api` page stays complete.
-  The Napoleon extension parses both styles.
 - **Keep solver state picklable.** Parameter sweeps ship solver objects to
   worker processes; non-picklable attributes will break :mod:`tls_sync.parallel`.
   ``tests/test_pickling.py`` guards this.
-- **Keep example scripts runnable from the repository root** so they rely on the
-  installed package rather than ``sys.path`` edits.
-- **Route shared defaults through** ``config.json`` rather than hard-coding them
-  across scripts (see :doc:`configuration`).
+- **Docstrings drive the API docs.** Write NumPy- or Google-style docstrings on
+public classes, methods, and functions so the :doc:`api` page stays complete.
 
 Adding a new solver or utility
-=============================
+==============================
 
 1. Add the module under ``src/tls_sync/`` (for example
    ``src/tls_sync/my_solver.py``) and to ``__init__.py`` to simplify imports.
