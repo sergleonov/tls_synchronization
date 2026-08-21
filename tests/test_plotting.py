@@ -31,7 +31,7 @@ def test_plot_exc_map(in_tmp_cwd, omega_and_time):
     omega, tlist = omega_and_time
     res = [np.random.rand(N_FREQ, N_TIME) for _ in LABELS]
     plotting.plot_exc_map(res, omega, tlist, LABELS, save=True, filename="exc")
-    assert (in_tmp_cwd / "bctds_figures" / "exc.png").exists()
+    assert (in_tmp_cwd / "figs" / "bctds_figures" / "exc.png").exists()
 
 
 def test_plot_sp_map(in_tmp_cwd, omega_and_time):
@@ -39,7 +39,7 @@ def test_plot_sp_map(in_tmp_cwd, omega_and_time):
     res = [np.random.rand(N_FREQ, N_TIME) + 1j * np.random.rand(N_FREQ, N_TIME)
            for _ in LABELS]
     plotting.plot_sp_map(res, omega, tlist, LABELS, save=True, filename="sp")
-    assert (in_tmp_cwd / "bctds_figures" / "sp.png").exists()
+    assert (in_tmp_cwd / "figs" / "bctds_figures" / "sp.png").exists()
 
 
 def test_plot_diff_map(in_tmp_cwd, omega_and_time):
@@ -48,7 +48,7 @@ def test_plot_diff_map(in_tmp_cwd, omega_and_time):
     sp = [np.random.rand(N_FREQ, N_TIME) + 1j * np.random.rand(N_FREQ, N_TIME)
           for _ in LABELS]
     plotting.plot_diff_map(exc, sp, omega, tlist, LABELS, save=True, filename="diff")
-    assert (in_tmp_cwd / "bctds_figures" / "diff.png").exists()
+    assert (in_tmp_cwd / "figs" / "bctds_figures" / "diff.png").exists()
 
 
 def test_plot_fft_map(in_tmp_cwd, omega_and_time):
@@ -58,7 +58,7 @@ def test_plot_fft_map(in_tmp_cwd, omega_and_time):
     omega_tls = np.array([3.5, 4.0])
     plotting.plot_fft_map(fft_freqs, fft_data, omega, omega_tls, LABELS,
                           save=True, filename="fft")
-    assert (in_tmp_cwd / "bctds_figures" / "fft.png").exists()
+    assert (in_tmp_cwd / "figs" / "bctds_figures" / "fft.png").exists()
 
 
 def test_plot_phase_evolution(in_tmp_cwd, omega_and_time):
@@ -66,7 +66,7 @@ def test_plot_phase_evolution(in_tmp_cwd, omega_and_time):
     phases = [np.sin(tlist), np.cos(tlist)]
     plotting.plot_phase_evolution(phases, tlist, [3.5, 4.0], "Markovian",
                                   save=True, filename="phase")
-    assert (in_tmp_cwd / "phase_plots" / "phase.png").exists()
+    assert (in_tmp_cwd / "figs" / "phase_plots" / "phase.png").exists()
 
 
 def test_plot_correlations(in_tmp_cwd, omega_and_time):
@@ -74,7 +74,7 @@ def test_plot_correlations(in_tmp_cwd, omega_and_time):
     corr = {"TLS 3.5, 4.0": np.linspace(-1, 1, N_TIME)}
     plotting.plot_correlations(corr, tlist, "Markovian", "Pearson",
                                save=True, filename="corr")
-    assert (in_tmp_cwd / "correlation_plots" / "Pearson_corr.png").exists()
+    assert (in_tmp_cwd / "figs" / "correlation_plots" / "Pearson_corr.png").exists()
 
 
 def test_plot_phase_corr_evolution(in_tmp_cwd, omega_and_time):
@@ -84,7 +84,7 @@ def test_plot_phase_corr_evolution(in_tmp_cwd, omega_and_time):
     plotting.plot_phase_corr_evolution(phases, corrs, ["pearson"], tlist,
                                        [3.5, 4.0], "Markovian",
                                        filename="pc", save=True)
-    assert (in_tmp_cwd / "correlation_plots" / "corrs_pc.png").exists()
+    assert (in_tmp_cwd / "figs" / "correlation_plots" / "corrs_pc.png").exists()
 
 
 def test_plot_corr_J_sweep(in_tmp_cwd):
@@ -93,7 +93,7 @@ def test_plot_corr_J_sweep(in_tmp_cwd):
     corr_map = np.random.uniform(-1, 1, (N_FREQ, N_TIME))
     plotting.plot_corr_J_sweep(corr_map, J_list, ratios, "Markovian",
                                save=True, filename="jsweep")
-    assert (in_tmp_cwd / "correlation_plots" / "jsweep.png").exists()
+    assert (in_tmp_cwd / "figs" / "correlation_plots" / "jsweep.png").exists()
 
 
 def test_plot_husimi_snapshots(in_tmp_cwd, omega_and_time):
@@ -106,7 +106,7 @@ def test_plot_husimi_snapshots(in_tmp_cwd, omega_and_time):
         labels=LABELS, omega_d=4.0, tls_freqs=[3.5, 4.0],
         filename="snap", save=True,
     )
-    assert (in_tmp_cwd / "husimi_snapshots" / "snap.png").exists()
+    assert (in_tmp_cwd / "figs" / "husimi_snapshots" / "snap.png").exists()
 
 
 def test_set_plot_format_updates_rcparams_then_restore():

@@ -23,39 +23,40 @@ def make_common_kwargs():
         T_drive=5.0,
         dt=0.5,
         n_tls=2,
-        n_freqs=2,
     )
-
+N_FREQS = 2
+omegas = np.linspace(3.0, 5.0, N_FREQS)
 
 def test_lindblad_phase_and_correlation_methods():
     params = make_common_kwargs()
+    print(params)
     solver = Lindblad(**params)
 
     assert pickle.loads(pickle.dumps(solver)).__str__() == solver.__str__()
 
-    exc, sp, states = solver.run(store_states=True)
-    assert exc.shape == (solver.n_freqs, solver.n_time)
-    assert sp.shape == (solver.n_freqs, solver.n_time)
-    assert len(states) == solver.n_freqs
+    exc, sp, states = solver.run(omegas, store_states=True)
+    assert exc.shape == (N_FREQS, solver.n_time)
+    assert sp.shape == (N_FREQS, solver.n_time)
+    assert len(states) == N_FREQS
 
     theta = np.linspace(0, np.pi, 4)
     phi = np.linspace(0, 2 * np.pi, 4)
-    husimi = solver.husimi_sim(solver.omega_d_vals[0], theta, phi, method="avg")
+    husimi = solver.husimi_sim(omegas[0], theta, phi, method="avg")
     assert husimi.shape == (solver.n_time, len(theta), len(phi))
 
-    phases, t = solver.phase_sim(solver.omega_d_vals[0])
+    phases, t = solver.phase_sim(omegas[0])
     assert len(phases) == solver.n_tls
     assert np.array_equal(t, solver.tlist)
 
-    pearson_corr, t_corr = solver.pearson_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    pearson_corr, t_corr = solver.pearson_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(pearson_corr, dict)
     assert np.array_equal(t_corr, solver.tlist)
 
-    plv_corr, t_plv = solver.plv_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    plv_corr, t_plv = solver.plv_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(plv_corr, dict)
     assert np.array_equal(t_plv, solver.tlist)
 
-    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(solver.omega_d_vals[0], "pearson", window_size=2, overlap=1)
+    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(omegas[0], "pearson", window_size=2, overlap=1)
     assert len(phases2) == solver.n_tls
     assert isinstance(corr_dict, dict)
     assert np.array_equal(t_corr2, solver.tlist)
@@ -68,29 +69,29 @@ def test_heom_phase_and_correlation_methods():
 
     assert pickle.loads(pickle.dumps(solver)).__str__() == solver.__str__()
 
-    exc, sp, states = solver.run(store_states=True)
-    assert exc.shape == (solver.n_freqs, solver.n_time)
-    assert sp.shape == (solver.n_freqs, solver.n_time)
-    assert len(states) == solver.n_freqs
+    exc, sp, states = solver.run(omegas, store_states=True)
+    assert exc.shape == (N_FREQS, solver.n_time)
+    assert sp.shape == (N_FREQS, solver.n_time)
+    assert len(states) == N_FREQS
 
     theta = np.linspace(0, np.pi, 4)
     phi = np.linspace(0, 2 * np.pi, 4)
-    husimi = solver.husimi_sim(solver.omega_d_vals[0], theta, phi, method="avg")
+    husimi = solver.husimi_sim(omegas[0], theta, phi, method="avg")
     assert husimi.shape == (solver.n_time, len(theta), len(phi))
 
-    phases, t = solver.phase_sim(solver.omega_d_vals[0])
+    phases, t = solver.phase_sim(omegas[0])
     assert len(phases) == solver.n_tls
     assert np.array_equal(t, solver.tlist)
 
-    pearson_corr, t_corr = solver.pearson_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    pearson_corr, t_corr = solver.pearson_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(pearson_corr, dict)
     assert np.array_equal(t_corr, solver.tlist)
 
-    plv_corr, t_plv = solver.plv_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    plv_corr, t_plv = solver.plv_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(plv_corr, dict)
     assert np.array_equal(t_plv, solver.tlist)
 
-    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(solver.omega_d_vals[0], "pearson", window_size=2, overlap=1)
+    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(omegas[0], "pearson", window_size=2, overlap=1)
     assert len(phases2) == solver.n_tls
     assert isinstance(corr_dict, dict)
     assert np.array_equal(t_corr2, solver.tlist)
@@ -103,29 +104,29 @@ def test_tempo_phase_and_correlation_methods():
 
     assert pickle.loads(pickle.dumps(solver)).__str__() == solver.__str__()
 
-    exc, sp, states = solver.run(store_states=True)
-    assert exc.shape == (solver.n_freqs, solver.n_time)
-    assert sp.shape == (solver.n_freqs, solver.n_time)
-    assert len(states) == solver.n_freqs
+    exc, sp, states = solver.run(omegas, store_states=True)
+    assert exc.shape == (N_FREQS, solver.n_time)
+    assert sp.shape == (N_FREQS, solver.n_time)
+    assert len(states) == N_FREQS
 
     theta = np.linspace(0, np.pi, 4)
     phi = np.linspace(0, 2 * np.pi, 4)
-    husimi = solver.husimi_sim(solver.omega_d_vals[0], theta, phi, method="avg")
+    husimi = solver.husimi_sim(omegas[0], theta, phi, method="avg")
     assert husimi.shape == (solver.n_time, len(theta), len(phi))
 
-    phases, t = solver.phase_sim(solver.omega_d_vals[0])
+    phases, t = solver.phase_sim(omegas[0])
     assert len(phases) == solver.n_tls
     assert np.array_equal(t, solver.tlist)
 
-    pearson_corr, t_corr = solver.pearson_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    pearson_corr, t_corr = solver.pearson_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(pearson_corr, dict)
     assert np.array_equal(t_corr, solver.tlist)
 
-    plv_corr, t_plv = solver.plv_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    plv_corr, t_plv = solver.plv_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(plv_corr, dict)
     assert np.array_equal(t_plv, solver.tlist)
 
-    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(solver.omega_d_vals[0], "pearson", window_size=2, overlap=1)
+    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(omegas[0], "pearson", window_size=2, overlap=1)
     assert len(phases2) == solver.n_tls
     assert isinstance(corr_dict, dict)
     assert np.array_equal(t_corr2, solver.tlist)
@@ -138,29 +139,29 @@ def test_tiered_phase_and_correlation_methods():
 
     assert pickle.loads(pickle.dumps(solver)).__str__() == solver.__str__()
 
-    exc, sp, states = solver.run(store_states=True)
-    assert exc.shape == (solver.n_freqs, solver.n_time)
-    assert sp.shape == (solver.n_freqs, solver.n_time)
-    assert len(states) == solver.n_freqs
+    exc, sp, states = solver.run(omegas, store_states=True)
+    assert exc.shape == (N_FREQS, solver.n_time)
+    assert sp.shape == (N_FREQS, solver.n_time)
+    assert len(states) == N_FREQS
 
     theta = np.linspace(0, np.pi, 4)
     phi = np.linspace(0, 2 * np.pi, 4)
-    husimi = solver.husimi_sim(solver.omega_d_vals[0], theta, phi, method="avg")
+    husimi = solver.husimi_sim(omegas[0], theta, phi, method="avg")
     assert husimi.shape == (solver.n_time, len(theta), len(phi))
 
-    phases, t = solver.phase_sim(solver.omega_d_vals[0])
+    phases, t = solver.phase_sim(omegas[0])
     assert len(phases) == solver.n_tls
     assert np.array_equal(t, solver.tlist)
 
-    pearson_corr, t_corr = solver.pearson_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    pearson_corr, t_corr = solver.pearson_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(pearson_corr, dict)
     assert np.array_equal(t_corr, solver.tlist)
 
-    plv_corr, t_plv = solver.plv_sim(solver.omega_d_vals[0], window_size=2, overlap=1)
+    plv_corr, t_plv = solver.plv_sim(omegas[0], window_size=2, overlap=1)
     assert isinstance(plv_corr, dict)
     assert np.array_equal(t_plv, solver.tlist)
 
-    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(solver.omega_d_vals[0], "pearson", window_size=2, overlap=1)
+    phases2, corr_dict, t_corr2 = solver.phase_corr_sim(omegas[0], "pearson", window_size=2, overlap=1)
     assert len(phases2) == solver.n_tls
     assert isinstance(corr_dict, dict)
     assert np.array_equal(t_corr2, solver.tlist)

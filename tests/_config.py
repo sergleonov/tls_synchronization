@@ -16,9 +16,7 @@ BASE = dict(
     T_total=6.0,
     T_drive=3.0,
     dt=1.0,
-    n_tls=2,
-    n_freqs=2,
-)
+    n_tls=2)
 
 EXPECTED_N_TIME = 7
 EXPECTED_N_FREQS = 2

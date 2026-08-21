@@ -6,11 +6,10 @@ from _config import BASE, EXPECTED_N_TIME, EXPECTED_N_FREQS
 from _helpers import is_hermitian, is_density_matrix, to_dense
 
 
-def test_time_and_frequency_grids(any_solver):
+def test_time_list(any_solver):
     s = any_solver
     assert s.n_time == EXPECTED_N_TIME
     assert len(s.tlist) == EXPECTED_N_TIME
-    assert len(s.omega_d_vals) == EXPECTED_N_FREQS
     assert s.tlist[0] == 0.0
     assert np.isclose(s.tlist[-1], BASE["T_total"])
 
