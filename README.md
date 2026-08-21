@@ -28,7 +28,7 @@ operators and helpers).
 
 ## Requirements
 
-- **Python ≥ 3.11**
+- **Python ≥ 3.12**
 - [**uv**](https://docs.astral.sh/uv/) for environment and dependency management
 - **git** — `oqupy` is installed directly from its upstream repository
 
