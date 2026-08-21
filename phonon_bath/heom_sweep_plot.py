@@ -8,7 +8,7 @@ def main():
     ohms = [0.5, 1, 3]
     files = []
     for o in ohms:
-        files = files + glob.glob(f"bctds_data/*power_{o}*.npz")
+        files = files + glob.glob(f"data/bctds_data/*power_{o}*.npz")
     print(files)
 
     exc, sp = [], []

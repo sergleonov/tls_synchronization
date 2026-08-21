@@ -109,9 +109,9 @@ def main(corr_name: str):
     fig.suptitle(f"{corr_name.capitalize() if corr_name == "pearson" else corr_name.upper()} Correlation Coefficient Heatmaps")
 
     plt.tight_layout()
-    plt.savefig(f"{corr_name}_heatmap.png")
+    plt.savefig(f"figs/correlation_plots/{corr_name}_heatmap.png")
     np.savez(
-        f"{corr_name}_heatmap_data.npz", 
+        f"data/correlation_data/{corr_name}_heatmap_data.npz", 
         heatmaps=heatmaps, 
         freq_list=freq_list,
         J=J, 

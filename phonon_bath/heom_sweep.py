@@ -62,8 +62,8 @@ def main():
 
         # save results
         print("Saving data...")
-        os.makedirs("bctds_data", exist_ok=True)
-        np.savez(f"bctds_data/sweep_data_{heom}_{args.tag}.npz",
+        os.makedirs("data/bctds_data/", exist_ok=True)
+        np.savez(f"data/bctds_data/sweep_data_{heom}_{args.tag}.npz",
                 results_heom=(heom_exc, heom_sp),
                 fft_freqs_heom=fft_freqs_heom, fft_data_heom=fft_data_heom,
                 tls_freqs=tls_freqs, 

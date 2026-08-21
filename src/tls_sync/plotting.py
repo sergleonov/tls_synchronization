@@ -80,8 +80,8 @@ def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_
 
     # save
     if save:
-        os.makedirs("bctds_figures",exist_ok=True)
-        plt.savefig(f"bctds_figures/{filename}.png")
+        os.makedirs("figs/bctds_figures/",exist_ok=True)
+        plt.savefig(f"figs/bctds_figures/{filename}.png")
 
 def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map"):
     """Plot sigma plus excitation maps for one or more datasets.
@@ -134,8 +134,8 @@ def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map
 
     # save
     if save:
-        os.makedirs("bctds_figures",exist_ok=True)
-        plt.savefig(f"bctds_figures/{filename}.png")
+        os.makedirs("figs/bctds_figures/",exist_ok=True)
+        plt.savefig(f"figs/bctds_figures/{filename}.png")
 
 def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filename="diff_map"):
     """Plot difference maps comparing total and sigma plus excitation data across label pairs.
@@ -204,8 +204,8 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
 
     # save
     if save:
-        os.makedirs("bctds_figures",exist_ok=True)
-        plt.savefig(f"bctds_figures/{filename}.png")
+        os.makedirs("figs/bctds_figures/",exist_ok=True)
+        plt.savefig(f"figs/bctds_figures/{filename}.png")
 
 def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True, filename="fft_map"):
     """Plot FFT magnitude maps across drive frequency and spectral frequency.
@@ -263,8 +263,8 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
 
     # save
     if save:
-        os.makedirs("bctds_figures",exist_ok=True)
-        plt.savefig(f"bctds_figures/{filename}.png")
+        os.makedirs("figs/bctds_figures/",exist_ok=True)
+        plt.savefig(f"figs/bctds_figures/{filename}.png")
 
 def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tls_freqs, filename="husimi_snapshots", save=True):
     """Plot selected Husimi Q-function snapshots for multiple solvers.
@@ -349,8 +349,8 @@ def plot_husimi_snapshots(Qts, tlist, snapshots, theta, phi, labels, omega_d, tl
     plt.tight_layout()
 
     if save:
-        os.makedirs("husimi_snapshots", exist_ok=True)
-        plt.savefig(f"husimi_snapshots/{filename}.png")
+        os.makedirs("figs/husimi_snapshots/", exist_ok=True)
+        plt.savefig(f"figs/husimi_snapshots/{filename}.png")
 
     return fig, axes
 
@@ -453,8 +453,8 @@ def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, f
         fig.suptitle(f"Drive: {omega_d} GHz, Method: {method}, t = {t_now:.1f} ns | {phase}", color=color)
 
     ani = anim.FuncAnimation(fig=fig, func=update, frames=len(tlist), interval=30)
-    os.makedirs("husimi_animation",exist_ok=True)
-    ani.save(f"husimi_animation/{filename}.mp4", writer='ffmpeg', fps=10)
+    os.makedirs("figs/husimi_animation/",exist_ok=True)
+    ani.save(f"figs/husimi_animation/{filename}.mp4", writer='ffmpeg', fps=10)
     print("Animation saved.")
 
 def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filename="phase_plot"):
@@ -500,8 +500,8 @@ def plot_phase_evolution(phases, tlist, tls_freqs, solver_name, save=True, filen
     plt.tight_layout()
 
     if save:
-        os.makedirs("phase_plots", exist_ok=True)
-        plt.savefig(f"phase_plots/{filename}.png")
+        os.makedirs("figs/phase_plots/", exist_ok=True)
+        plt.savefig(f"figs/phase_plots/{filename}.png")
 
 def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, filename="correlations_plot"):
     """Plot correlation time series for one or more TLS pairs.
@@ -536,8 +536,8 @@ def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, fi
     plt.tight_layout()
 
     if save:
-        os.makedirs("correlation_plots", exist_ok=True)
-        plt.savefig(f"correlation_plots/{corr_name}_{filename}.png")
+        os.makedirs("figs/correlation_plots/", exist_ok=True)
+        plt.savefig(f"figs/correlation_plots/{corr_name}_{filename}.png")
 
 def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs, solver_name, filename, save=True):
     """Plot phase differences and multiple correlation evolutions in one figure.
@@ -609,8 +609,8 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
     plt.tight_layout()
 
     if save:
-        os.makedirs("correlation_plots", exist_ok=True)
-        plt.savefig(f"correlation_plots/corrs_{filename}.png")
+        os.makedirs("figs/correlation_plots/", exist_ok=True)
+        plt.savefig(f"figs/correlation_plots/corrs_{filename}.png")
 
 def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, filename="corr_J_sweep"):
     """Plot a correlation sweep as a function of coupling strength and frequency ratio.
@@ -654,6 +654,6 @@ def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, fil
 
     # save
     if save:
-        os.makedirs("correlation_plots",exist_ok=True)
-        plt.savefig(f"correlation_plots/{filename}.png")
+        os.makedirs("figs/correlation_plots/",exist_ok=True)
+        plt.savefig(f"figs/correlation_plots/{filename}.png")
     
