@@ -56,7 +56,6 @@ def main(corr_name: str):
             T_drive=T_drive,
             dt=dt,
             n_tls=n_tls,
-            n_freqs=n_freqs,
             sd_type=sd_type,
             ohmicity=ohmicity,
         )
@@ -69,8 +68,6 @@ def main(corr_name: str):
             T_total=T_total,
             T_drive=T_drive,
             dt=dt,
-            n_tls=n_tls,
-            n_freqs=n_freqs,
         )
 
         for solver in (mark, heom):
@@ -78,7 +75,7 @@ def main(corr_name: str):
             if solver_name not in heatmaps:
                 heatmaps[solver_name] = []
 
-            _, _, states = solver.run(store_states=True)
+            _, _, states = solver.run(freq_list, store_states=True)
             corr_values = []
             for drive_idx in range(len(freq_list)):
                 corr_values.append(

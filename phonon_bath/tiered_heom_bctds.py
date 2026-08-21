@@ -44,7 +44,6 @@ def main():
                 T_drive=T_drive, 
                 dt=dt, 
                 n_tls=n_tls,
-                n_freqs=n_freqs,
                 sd_type=sd_type,
                 ohmicity=ohmicity)
 
@@ -58,7 +57,6 @@ def main():
                         T_drive=T_drive, 
                         dt=dt, 
                         n_tls=n_tls,
-                        n_freqs=n_freqs,
                         omega_c=omega_c,
                         Nb=Nb)
     
@@ -70,19 +68,19 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
-                    n_tls=n_tls,
-                    n_freqs=n_freqs)
+                    n_tls=n_tls)
     
-    heom_exc, heom_sp = heom.run()
-    tier_exc, tier_sp = tier.run()
-    mark_exc, mark_sp = mark.run()
+    omegas = np.linspace(3.0, 5.0, n_freqs)
+    heom_exc, heom_sp = heom.run(omegas)
+    tier_exc, tier_sp = tier.run(omegas)
+    mark_exc, mark_sp = mark.run(omegas)
 
     exc = [mark_exc, tier_exc, heom_exc]
     sp  = [mark_sp, tier_sp, heom_sp]
 
-    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, heom.omega_d_vals, heom.tlist, heom.dt, heom.n_time)
-    fft_freqs_tier, fft_data_tier = compute_fft(tier_sp, tier.omega_d_vals, tier.tlist, tier.dt, tier.n_time)
-    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
+    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, omegas, heom.tlist, heom.dt, heom.n_time)
+    fft_freqs_tier, fft_data_tier = compute_fft(tier_sp, omegas, tier.tlist, tier.dt, tier.n_time)
+    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, omegas, mark.tlist, mark.dt, mark.n_time)
 
     labels = [mark._name, tier._name, heom._name]
     

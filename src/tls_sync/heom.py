@@ -22,7 +22,6 @@ class HEOM(Solver):
                  T_drive=100.0, 
                  dt=0.5, 
                  n_tls=2,
-                 n_freqs=300,
                  sd_type="drude",
                  ohmicity=None):
         """Initialize a HEOM solver instance.
@@ -53,8 +52,6 @@ class HEOM(Solver):
             Time step size.
         n_tls : int
             Number of TLS components.
-        n_freqs : int
-            Number of drive frequencies.
         sd_type : {'drude', 'power'}
             Spectral density type.
         ohmicity : float or None
@@ -74,7 +71,6 @@ class HEOM(Solver):
                         T_drive=T_drive, 
                         dt=dt, 
                         n_tls=n_tls,
-                        n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="HEOM")
 
@@ -123,7 +119,6 @@ class HEOM(Solver):
                             T_drive=d["T_drive"], 
                             dt=d["dt"],  
                             n_tls=d["n_tls"],
-                            n_freqs=d["n_freqs"],
                             Nk=d["Nk"],
                             max_depth=d["max_depth"],
                             sd_type=d["sd_type"],
@@ -224,7 +219,7 @@ class HEOM(Solver):
             T=T,
         )
     
-    def run(self, store_states=False):
+    def run(self, omega_d_vals, store_states=False):
         """Execute HEOM simulations across all configured drive frequencies."""
         if self.sd_type not in SD_TYPES:
             raise ValueError("Error: Invalid spectral density.")
@@ -235,7 +230,7 @@ class HEOM(Solver):
         worker = partial(self._worker, bath_coeffs=bath_coeffs, store_states=store_states)
 
         return run_parallel(
-            omega_d_vals=self.omega_d_vals,
+            omega_d_vals=omega_d_vals,
             worker=worker,
             n_time=self.n_time,
             store_states=store_states,

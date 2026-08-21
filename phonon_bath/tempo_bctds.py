@@ -38,7 +38,6 @@ def main():
                 T_drive=T_drive, 
                 dt=dt, 
                 n_tls=n_tls,
-                n_freqs=n_freqs,
                 zeta=zeta,
                 cutoff_type=cutoff_type,
                 tcut=tcut,
@@ -52,17 +51,17 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
-                    n_tls=n_tls,
-                    n_freqs=n_freqs)
-
-    tempo_exc, tempo_sp = tempo.run()
-    mark_exc, mark_sp = mark.run()
+                    n_tls=n_tls) 
+    
+    omegas = np.linspace(3.0, 5.0, n_freqs)
+    tempo_exc, tempo_sp = tempo.run(omegas)
+    mark_exc, mark_sp = mark.run(omegas)
 
     exc = [mark_exc, tempo_exc]
     sp  = [mark_sp, tempo_sp]
 
-    fft_freqs_tempo, fft_data_tempo = compute_fft(tempo_sp, tempo.omega_d_vals, tempo.tlist, tempo.dt, tempo.n_time)
-    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
+    fft_freqs_tempo, fft_data_tempo = compute_fft(tempo_sp, omegas, tempo.tlist, tempo.dt, tempo.n_time)
+    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, omegas, mark.tlist, mark.dt, mark.n_time)
 
     # save results
     print("Saving data...")

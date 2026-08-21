@@ -40,7 +40,6 @@ def main():
                 T_drive=T_drive, 
                 dt=dt, 
                 n_tls=n_tls,
-                n_freqs=n_freqs,
                 sd_type=sd_type,
                 ohmicity=ohmicity)
     
@@ -52,17 +51,17 @@ def main():
                     T_total=T_total, 
                     T_drive=T_drive, 
                     dt=dt, 
-                    n_tls=n_tls,
-                    n_freqs=n_freqs)
-    
-    heom_exc, heom_sp = heom.run()
-    mark_exc, mark_sp = mark.run()
+                    n_tls=n_tls)
+
+    omegas = np.linspace(3.0, 5.0, n_freqs)
+    heom_exc, heom_sp = heom.run(omegas)
+    mark_exc, mark_sp = mark.run(omegas)
 
     exc = [mark_exc, heom_exc]
     sp  = [mark_sp, heom_sp]
 
-    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, heom.omega_d_vals, heom.tlist, heom.dt, heom.n_time)
-    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, mark.omega_d_vals, mark.tlist, mark.dt, mark.n_time)
+    fft_freqs_heom, fft_data_heom = compute_fft(heom_sp, omegas, heom.tlist, heom.dt, heom.n_time)
+    fft_freqs_mark, fft_data_mark = compute_fft(mark_sp, omegas, mark.tlist, mark.dt, mark.n_time)
 
     # save results
     print("Saving data...")

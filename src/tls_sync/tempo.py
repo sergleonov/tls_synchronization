@@ -18,7 +18,6 @@ class TEMPO(Solver):
                  T_drive=100.0, 
                  dt=0.5, 
                  n_tls=2,
-                 n_freqs=300,
                  zeta=1,
                  cutoff_type="exponential",
                  tcut=5.0,
@@ -47,8 +46,6 @@ class TEMPO(Solver):
             Time step size.
         n_tls : int
             Number of TLS components.
-        n_freqs : int
-            Number of drive frequencies.
         zeta : float
             Ohmicity exponent for the power-law spectral density.
         cutoff_type : str
@@ -70,7 +67,6 @@ class TEMPO(Solver):
                         T_drive=T_drive, 
                         dt=dt,
                         n_tls=n_tls,
-                        n_freqs=n_freqs,
                         is_qutip_solver=False,
                         name="TEMPO")
 
@@ -129,7 +125,6 @@ class TEMPO(Solver):
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
                             n_tls=d["n_tls"],
-                            n_freqs=d["n_freqs"],
                             zeta=d["ohmicity"],
                             cutoff_type=d["cutoff_type"],
                             tcut=d["tcut"],
@@ -165,7 +160,7 @@ class TEMPO(Solver):
             return exc_tempo, sp_tempo, dynamics
         return exc_tempo, sp_tempo
     
-    def run(self, store_states=False):
+    def run(self, omega_d_vals, store_states=False):
         """Execute TEMPO simulations across all configured drive frequencies."""
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
@@ -177,7 +172,7 @@ class TEMPO(Solver):
                          store_states=store_states)
 
         return run_parallel(
-            omega_d_vals=self.omega_d_vals,
+            omega_d_vals=omega_d_vals,
             worker=worker,
             n_time=self.n_time,
             store_states=store_states,

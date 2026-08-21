@@ -18,7 +18,6 @@ class TieredSolver(Solver):
                  T_drive=100.0, 
                  dt=0.5, 
                  n_tls=2,
-                 n_freqs=300,
                  omega_c=3.75,
                  Nb=10):
         """Initialize a Tiered solver instance.
@@ -45,8 +44,6 @@ class TieredSolver(Solver):
             Time step size.
         n_tls : int
             Number of TLS components.
-        n_freqs : int
-            Number of drive frequencies.
         omega_c : float
             Cavity mode frequency.
         Nb : int
@@ -66,7 +63,6 @@ class TieredSolver(Solver):
                         T_drive=T_drive, 
                         dt=dt, 
                         n_tls=n_tls,
-                        n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="Tiered")
         
@@ -101,7 +97,6 @@ class TieredSolver(Solver):
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
                             n_tls=d["n_tls"],
-                            n_freqs=d["n_freqs"],
                             omega_c=d["omega_c"],
                             Nb=d["Nb"])
     
@@ -132,12 +127,12 @@ class TieredSolver(Solver):
             return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
-    def run(self, store_states=False):
+    def run(self, omega_d_vals, store_states=False):
         """Execute Tiered solver simulations across drive frequencies."""
         worker = partial(self._worker, store_states=store_states)
 
         return run_parallel(
-            self.omega_d_vals,
+            omega_d_vals,
             worker,
             self.n_time,
             store_states,

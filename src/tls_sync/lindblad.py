@@ -16,8 +16,7 @@ class Lindblad(Solver):
                  T_total=1600, 
                  T_drive=100.0, 
                  dt=0.5, 
-                 n_tls=2,
-                 n_freqs=300):
+                 n_tls=2):
         """Initialize a Markovian Lindblad solver instance.
 
         Parameters
@@ -40,8 +39,6 @@ class Lindblad(Solver):
             Time step size.
         n_tls : int
             Number of TLS components.
-        n_freqs : int
-            Number of drive frequencies.
         """
         
         super().__init__(tls_freqs=tls_freqs, 
@@ -53,7 +50,6 @@ class Lindblad(Solver):
                         T_drive=T_drive, 
                         dt=dt, 
                         n_tls=n_tls,
-                        n_freqs=n_freqs,
                         is_qutip_solver=True,
                         name="Markovian")
 
@@ -82,8 +78,7 @@ class Lindblad(Solver):
                             T_total=d["T_total"], 
                             T_drive=d["T_drive"], 
                             dt=d["dt"], 
-                            n_tls=d["n_tls"],
-                            n_freqs=d["n_freqs"])
+                            n_tls=d["n_tls"])
     
     def get_name(self):
         """Return the solver name."""
@@ -112,12 +107,12 @@ class Lindblad(Solver):
             return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
     
-    def run(self, store_states=False):
+    def run(self, omega_d_vals, store_states=False):
         """Execute Markovian Lindblad simulations across drive frequencies."""
         worker = partial(self._worker, store_states=store_states)
 
         return run_parallel(
-            omega_d_vals=self.omega_d_vals,
+            omega_d_vals=omega_d_vals,
             worker=worker,
             n_time=self.n_time,
             store_states=store_states,

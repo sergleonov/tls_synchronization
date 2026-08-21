@@ -23,7 +23,6 @@ class Solver:
                  T_drive=100.0, 
                  dt=0.5, 
                  n_tls=2,
-                 n_freqs=300,
                  is_qutip_solver=None,
                  name="Abstract"):
         """Initialize common TLS solver parameters.
@@ -48,8 +47,6 @@ class Solver:
             Time step.
         n_tls : int
             Number of two-level systems.
-        n_freqs : int
-            Number of drive frequency points.
         is_qutip_solver : bool or None
             Whether the solver uses QuTiP objects.
         name : str
@@ -78,8 +75,6 @@ class Solver:
         # time list and drive frequencies
         self.tlist = np.arange(0, self.T_total+self.dt, self.dt)
         self.n_time = len(self.tlist)
-        self.n_freqs = n_freqs
-        self.omega_d_vals = np.linspace(3.0, 5.0, self.n_freqs)
 
         # tls frequencies
         if tls_freqs is not None:
@@ -106,7 +101,6 @@ class Solver:
             "T_drive":self.T_drive, 
             "dt":self.dt, 
             "n_tls":self.n_tls,
-            "n_freqs":self.n_freqs,
             "name":self._name
         }
         return d
@@ -122,7 +116,6 @@ class Solver:
                     T_drive=d["T_drive"], 
                     dt=d["dt"], 
                     n_tls=d["n_tls"],
-                    n_freqs=d["n_freqs"],
                     name=d["name"])
 
     def __str__(self):
