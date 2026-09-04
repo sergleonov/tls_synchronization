@@ -18,18 +18,18 @@ resolves correctly and no ``sys.path`` manipulation is needed:
 
 .. code-block:: bash
 
-   uv run python husimi_function/husimi_animation.py
-   uv run python phonon_bath/heom_bctds.py
+   uv run python examples/synchronization/husimi_animation.py
+   uv run python examples/bctds/heom_bctds.py
 
 Outputs (figures, animations, and ``.npz`` data) are written into the
-corresponding output directories, for example ``phonon_bath/bctds_data`` and
-``phonon_bath/bctds_figures``.
+corresponding output directories, for example ``bctds/bctds_data`` and
+``bctds/bctds_figures``.
 
 Husimi and correlation examples
 ===============================
 
-Scripts in ``husimi_function/`` focus on phase-space (Husimi) visualization and
-on correlation / phase-synchronization diagnostics.
+Scripts in ``synchronization/`` implement on phase-space (Husimi) visualization and
+on correlation / phase-synchronization metrics.
 
 ``husimi_animation.py``
    Produces an evolution of Husimi-Q function for 2 interacting TLSs.
@@ -56,7 +56,7 @@ on correlation / phase-synchronization diagnostics.
 Phonon-bath / BCTDS examples
 ============================
 
-Scripts in ``phonon_bath/`` set up phonon-bath models and run BCTDS-style
+Scripts in ``bctds/`` set up phonon-bath models and run BCTDS-style
 simulations across the different solvers.
 
 ``heom_bctds.py``
