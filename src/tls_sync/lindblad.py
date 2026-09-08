@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
-from functools import partial
 
 class Lindblad(Solver):
     """Markovian Lindblad solver for open TLS dynamics."""
@@ -106,32 +104,3 @@ class Lindblad(Solver):
         if store_states:
             return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
-    
-    def run(self, omega_d_vals, store_states=False):
-        """Execute Markovian Lindblad simulations across drive frequencies."""
-        worker = partial(self._worker, store_states=store_states)
-
-        return run_parallel(
-            omega_d_vals=omega_d_vals,
-            worker=worker,
-            n_time=self.n_time,
-            store_states=store_states,
-            desc="Markovian simulations"
-        )
-
-    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
-        """Compute Husimi-Q functions for a Lindblad simulation."""
-        states = self._get_states(omega_d)
-        return parallel_eval_husimi(
-            states,
-            self.eval_husimi,
-            theta,
-            phi,
-            method,
-            tls_idx,
-            desc="Lindblad Husimi-Q Computation"
-        )
-    
-    def _get_states(self, omega_d):
-        _, _, states = self._worker(omega_d, store_states=True)
-        return states

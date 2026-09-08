@@ -1,10 +1,8 @@
 from tls_sync import Solver, SD_TYPES
 import numpy as np
-from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
 from qutip.solver.heom import HEOMSolver
 from qutip.core.environment import DrudeLorentzEnvironment, OhmicEnvironment, ExponentialBosonicEnvironment
-from functools import partial
 
 class HEOM(Solver):
     """HEOM solver wrapper for hierarchical equations of motion simulations."""
@@ -94,6 +92,10 @@ class HEOM(Solver):
         self.evals, self.evecs = self.H.eigenstates()
         self.psi0 = self.evecs[0] 
         self.rho0 = qt.ket2dm(self.psi0)
+
+    def _build_dissipators(self):
+        """HEOM captures the bath exactly; it uses no Lindblad collapse operators."""
+        pass
 
     def __getstate__(self):
         """Return the picklable state of the HEOM solver."""
@@ -219,39 +221,9 @@ class HEOM(Solver):
             T=T,
         )
     
-    def run(self, omega_d_vals, store_states=False):
-        """Execute HEOM simulations across all configured drive frequencies."""
+    def _prepare(self):
+        """Build the picklable bath expansion coefficients once per run."""
         if self.sd_type not in SD_TYPES:
             raise ValueError("Error: Invalid spectral density.")
-
         bath = self._build_bath()
-        bath_coeffs = self._bath_to_coeffs(bath)
-
-        worker = partial(self._worker, bath_coeffs=bath_coeffs, store_states=store_states)
-
-        return run_parallel(
-            omega_d_vals=omega_d_vals,
-            worker=worker,
-            n_time=self.n_time,
-            store_states=store_states,
-            desc="HEOM simulations",
-        )
-    
-    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
-        """Compute Husimi-Q functions for an HEOM run at a given drive frequency."""
-        states = self._get_states(omega_d)
-        return parallel_eval_husimi(
-            states,
-            self.eval_husimi,
-            theta,
-            phi,
-            method,
-            tls_idx,
-            desc="HEOM Husimi-Q Computation"
-        )
-
-    def _get_states(self, omega_d):
-        bath = self._build_bath()
-        bath_coeffs = self._bath_to_coeffs(bath)
-        _, _, states = self._worker(omega_d, bath_coeffs, store_states=True)
-        return states
+        return {"bath_coeffs": self._bath_to_coeffs(bath)}

@@ -1,12 +1,16 @@
 import numpy as np
 import oqupy
 import qutip as qt
+from abc import ABC, abstractmethod
+from functools import partial
+
+from .parallel import run_parallel, parallel_eval_husimi
 
 SOLVERS = ["Markovian", "Tiered", "HEOM", "TEMPO"]
 SD_TYPES = ["power", "drude"]
 HUSIMI_EVAL_METHODS = ["avg", "ptrace", "diff"]
 
-class Solver:
+class Solver(ABC):
     """Base solver class for TLS dynamics and observables.
 
     This class provides common initialization, operator building, Hamiltonian
@@ -107,16 +111,7 @@ class Solver:
 
     def __setstate__(self, d):
         """Reconstruct the solver from a saved state dictionary."""
-        self.__init__(tls_freqs=d["tls_freqs"], 
-                    J=d["J"], 
-                    Omega_amp=d["Omega_amp"], 
-                    lam=d["lam"], 
-                    T=d["T"], 
-                    T_total=d["T_total"], 
-                    T_drive=d["T_drive"], 
-                    dt=d["dt"], 
-                    n_tls=d["n_tls"],
-                    name=d["name"])
+        raise NotImplementedError("Reconstruction from pickled state is not implemented.")
 
     def __str__(self):
         """Return a string summary of the solver configuration."""
@@ -144,11 +139,30 @@ class Solver:
         for i in range(self.n_tls):
             self.c_ops.append(np.sqrt(self.lam * (n_th[i] + 1)) * sum(self.sm))
             self.c_ops.append(np.sqrt(self.lam * n_th[i]) * sum(self.sp))
-        if self._name == "Tiered":
-            self.a = self._tensor([qt.qeye(2)] * self.n_tls + [qt.destroy(self.Nb)])
-            n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
-            self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * (self.a))
-            self.c_ops.append(np.sqrt(self.lam * (n_th_mode)) * (self.a.dag()))
+
+    # ------------------------------------------------------------------ #
+    # Model-definition hooks. Override these in a subclass to change the  #
+    # physical model (extra modes, dissipators, Hamiltonian terms)        #
+    # without editing the shared construction code.                       #
+    # ------------------------------------------------------------------ #
+    def _embed_operators(self, sx, sy, sz, sp, sm):
+        """Embed single-TLS operators into the full Hilbert space.
+
+        Default is the identity: the TLS operators already act on the full
+        space. Subclasses that add extra subsystems (e.g. a cavity) override
+        this to tensor the TLS operators with the extra-mode identities.
+        """
+        return sx, sy, sz, sp, sm
+
+    def _build_dissipators(self):
+        """Populate ``self.c_ops`` for Lindblad-form solvers.
+
+        Default builds the standard per-TLS thermal collapse operators.
+        Subclasses with extra channels append to ``self.c_ops`` after calling
+        ``super()._build_dissipators()``; purely non-Markovian backends that
+        never use collapse operators may override this with a no-op.
+        """
+        self._build_c_ops()
 
     def build_operators(self):
         """Build TLS operators and system observables.
@@ -156,9 +170,6 @@ class Solver:
         The method constructs Pauli operators for each TLS and sets up the
         collective excitation and spin operators used by solver backends.
         """
-        if self._name not in SOLVERS:
-            raise ValueError("Error: Invalid solver name.")
-
         sx_tls = []
         sy_tls = []
         sz_tls = []
@@ -182,48 +193,13 @@ class Solver:
             op_list[i] = qt.sigmap() if self.is_qutip_solver else oqupy.operators.sigma("+")
             sp_tls.append(self._tensor(op_list))
 
-        match self._name:
-            case "Markovian":
-                self.sx = sx_tls
-                self.sy = sy_tls
-                self.sz = sz_tls
-                self.sp = sp_tls
-                self.sm = sm_tls
-                # collapse operators
-                self._build_c_ops()
+        # Embed the single-TLS operators into the full Hilbert space.
+        # Default is a no-op; subclasses that add extra subsystems (e.g. a
+        # cavity) override _embed_operators to tensor them in.
+        self.sx, self.sy, self.sz, self.sp, self.sm = self._embed_operators(
+            sx_tls, sy_tls, sz_tls, sp_tls, sm_tls
+        )
 
-            case "Tiered":
-                self.sx = []
-                self.sy = []
-                self.sz = []
-                self.sp = []
-                self.sm = []
-                I_cav = qt.qeye(self.Nb) 
-                for i in range(self.n_tls):
-                    op_list = [sx_tls[i], I_cav]
-                    self.sx.append(self._tensor(op_list))
-
-                    op_list = [sy_tls[i], I_cav]
-                    self.sy.append(self._tensor(op_list))
-
-                    op_list = [sz_tls[i], I_cav]
-                    self.sz.append(self._tensor(op_list))
-
-                    op_list = [sp_tls[i], I_cav]
-                    self.sp.append(self._tensor(op_list))
-
-                    op_list = [sm_tls[i], I_cav]
-                    self.sm.append(self._tensor(op_list))
-                # annihilator and collapse operators
-                self._build_c_ops()
-        
-            case _:
-                self.sx = sx_tls
-                self.sy = sy_tls
-                self.sz = sz_tls
-                self.sp = sp_tls
-                self.sm = sm_tls
-        
         # observables
         self.collective_sp = sum(self.sp)
         self.collective_sm = sum(self.sm)
@@ -232,11 +208,12 @@ class Solver:
         else:
             self.collective_exc = np.matmul(self.collective_sp, self.collective_sm)
 
+        # Dissipators: standard TLS collapse operators by default. Solvers with
+        # extra channels (or none) override _build_dissipators.
+        self._build_dissipators()
+
     def build_hamiltonian(self):
         """Construct the static system Hamiltonian."""
-        if self._name not in SOLVERS:
-            raise ValueError("Error: Invalid solver name")
-
         self.H = sum(0.5 * self.omega_tls[i] * self.sz[i] for i in range(self.n_tls))
         for i in range(self.n_tls):
             for j in range(i+1, self.n_tls):
@@ -245,9 +222,14 @@ class Solver:
                 else:
                     self.H += self.J * np.matmul(self.sz[i], self.sz[j])
 
-        if self._name == "Tiered":
-            self.H += self.omega_c * self.a.dag() * self.a # cavity hamiltonian
-            self.H += self.g * sum(self.sx) * (self.a.dag() + self.a) # system-bath hamiltonian
+        # Extra model terms (default: none; e.g. Tiered adds a cavity + coupling).
+        extra = self._model_hamiltonian()
+        if extra is not None:
+            self.H = self.H + extra
+
+    def _model_hamiltonian(self):
+        """Return extra static Hamiltonian terms for the model, or None."""
+        return None
     
     def drive_coeff(self, t, args):
         """Return the time-dependent drive coefficient for the Hamiltonian."""
@@ -255,7 +237,45 @@ class Solver:
             return 0.5 * self.Omega_amp * np.cos(args["omega"] * t)
         else:
             return 0.0
-        
+
+    # ------------------------------------------------------------------ #
+    # State-normalization hooks. These convert a solver's stored states    #
+    # into a uniform QuTiP representation so the analysis code below does  #
+    # not need to know which backend produced them.                       #
+    # ------------------------------------------------------------------ #
+    def _to_density_matrix(self, state):
+        """Return ``state`` as a full-system QuTiP density matrix.
+
+        Accepts a QuTiP ket/operator or a raw array. Raw arrays are wrapped as
+        an ``n_tls``-qubit operator (used by array-based backends such as
+        TEMPO). Subclasses with a different Hilbert-space layout may override.
+        """
+        if not isinstance(state, qt.Qobj):
+            dims = [2 for _ in range(self.n_tls)]
+            state = qt.Qobj(state, dims=[dims, dims])
+        if state.isket:
+            state = qt.ket2dm(state)
+        return state
+
+    def _reduce_to_tls(self, rho):
+        """Reduce a full-system density matrix to the TLS subsystems.
+
+        Default traces out any trailing extra subsystems (e.g. a cavity) so
+        only the ``n_tls`` two-level systems remain; a state that already
+        contains only the TLSs is returned unchanged.
+        """
+        if len(rho.dims[0]) > self.n_tls:
+            rho = qt.ptrace(rho, list(range(self.n_tls)))
+        return rho
+
+    def _state_sequence(self, states):
+        """Return an indexable sequence of stored states.
+
+        Default assumes ``states`` is already a sequence; backends that wrap
+        their trajectory in a container override this to unwrap it.
+        """
+        return states
+
     def eval_husimi(self, rho, theta, phi, tls_idx=None, method="avg"):
         """Evaluate the Husimi Q-function for a state or reduced TLS state.
 
@@ -280,13 +300,8 @@ class Solver:
         if method not in HUSIMI_EVAL_METHODS:
             raise ValueError("Error: Invalid husimi evaluation method")
 
-        if self._name == "TEMPO":
-            dims = [2 for _ in range(self.n_tls)]
-            rho = qt.Qobj(rho, dims=[dims, dims])
+        rho = self._to_density_matrix(rho)
 
-        if rho.isket:
-            rho = qt.ket2dm(rho)
-        
         j = 1/2 # spin of TLS
         prefactor = (2 * j + 1) / (4 * np.pi) # husimi prefactor
         match method:
@@ -394,27 +409,18 @@ class Solver:
         dict
             Mapping of TLS pair labels to entropy trajectories.
         """
+        states = self._state_sequence(states)
+
         if len(states) != self.n_time:
             raise ValueError("Error: states length must equal n_time")
-
-        if self._name == "TEMPO":
-            states = states.states
 
         res_dict = {}
         for i in range(self.n_tls):
             for j in range(i+1, self.n_tls):
                 entropy_t = np.zeros(self.n_time)
                 for idx, state in enumerate(states):
-                    if self._name == "Tiered":
-                        # trace out environment
-                        state = qt.ptrace(state, [i for i in range(self.n_tls)]) 
-                        entropy_t[idx] = qt.entropy_mutual(state, i, j)
-                    elif self._name == "TEMPO":
-                        dims = [2 for _ in range(self.n_tls)]
-                        rho = qt.Qobj(state, dims=[dims, dims])
-                        entropy_t[idx] = qt.entropy_mutual(rho, i, j)
-                    else:
-                        entropy_t[idx] = qt.entropy_mutual(state, i, j)
+                    rho = self._reduce_to_tls(self._to_density_matrix(state))
+                    entropy_t[idx] = qt.entropy_mutual(rho, i, j)
                 res_dict[f"TLS {self.omega_tls[i]}, {self.omega_tls[j]}"] = entropy_t
 
         return res_dict, self.tlist      
@@ -510,9 +516,55 @@ class Solver:
 
         return corrs, self.tlist
 
+    @abstractmethod
+    def _worker(self, omega_d, store_states=False):
+        """Evolve the system at a single drive frequency.
+
+        Any drive-frequency-independent objects built by ``_prepare`` are
+        injected as extra keyword arguments. Returns ``(exc, sp)``, or
+        ``(exc, sp, states)`` when ``store_states`` is True.
+        """
+
+    def _prepare(self):
+        """Return per-run, drive-frequency-independent worker kwargs.
+
+        Default is empty. Solvers that build an expensive object once per run
+        (e.g. a bath expansion or a process tensor) override this to return it
+        keyed by the argument name their ``_worker`` expects.
+        """
+        return {}
+
+    def run(self, omega_d_vals, store_states=False):
+        """Run the solver across the given drive frequencies.
+
+        Returns ``(exc, sp)`` or ``(exc, sp, states)`` when ``store_states``.
+        """
+        worker = partial(self._worker, store_states=store_states, **self._prepare())
+        return run_parallel(
+            omega_d_vals=omega_d_vals,
+            worker=worker,
+            n_time=self.n_time,
+            store_states=store_states,
+            desc=f"{self._name} simulations",
+        )
+
     def _get_states(self, omega_d):
-        """Return stored states or dynamics from a single-frequency run."""
-        raise NotImplementedError("Solver subclasses must implement _get_states()")
+        """Return the stored state trajectory from a single-frequency run."""
+        _, _, states = self._worker(omega_d, store_states=True, **self._prepare())
+        return states
+
+    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
+        """Compute Husimi-Q functions for a single-frequency run."""
+        states = self._state_sequence(self._get_states(omega_d))
+        return parallel_eval_husimi(
+            states,
+            self.eval_husimi,
+            theta,
+            phi,
+            method,
+            tls_idx,
+            desc=f"{self._name} Husimi-Q Computation",
+        )
 
     def phase_sim(self, omega_d):
         """Compute TLS phase differences from solver states."""

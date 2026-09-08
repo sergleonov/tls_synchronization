@@ -85,11 +85,11 @@ Confirm the package imports cleanly:
 
    uv run python -c "from tls_sync.solver import HEOM, Lindblad, TieredSolver, TEMPO; print('ok')"
 
-And run the fast portion of the test suite:
+And run the test suite:
 
 .. code-block:: bash
 
-   uv run pytest -m "not slow"
+   uv run pytest
 
 See :doc:`testing` for more on the test suite.
 
