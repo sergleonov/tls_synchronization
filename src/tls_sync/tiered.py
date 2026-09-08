@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from .parallel import run_parallel, parallel_eval_husimi
 import qutip as qt
-from functools import partial
 
 class TieredSolver(Solver):
     """Solver for Tiered system with strong coupling to a single bath mode and weak coupling to thermal bath."""
@@ -76,7 +74,29 @@ class TieredSolver(Solver):
         self.evals, self.evecs = self.H.eigenstates()
         self.psi0 = self.evecs[0] 
         self.rho0 = qt.ket2dm(self.psi0)
-        
+
+    def _embed_operators(self, sx, sy, sz, sp, sm):
+        """Embed the TLS operators into the TLS-cavity space and build the
+        cavity annihilation operator on the full space."""
+        I_cav = qt.qeye(self.Nb)
+        def with_cavity(ops):
+            return [self._tensor([op, I_cav]) for op in ops]
+        self.a = self._tensor([qt.qeye(2)] * self.n_tls + [qt.destroy(self.Nb)])
+        return (with_cavity(sx), with_cavity(sy), with_cavity(sz),
+                with_cavity(sp), with_cavity(sm))
+
+    def _model_hamiltonian(self):
+        """Cavity Hamiltonian plus collective TLS-cavity coupling."""
+        return (self.omega_c * self.a.dag() * self.a
+                + self.g * sum(self.sx) * (self.a.dag() + self.a))
+
+    def _build_dissipators(self):
+        """Standard TLS collapse operators plus cavity decay/excitation."""
+        super()._build_dissipators()
+        n_th_mode = 1 / (np.exp(self.omega_c / self.T) - 1)
+        self.c_ops.append(np.sqrt(self.lam * (n_th_mode + 1)) * self.a)
+        self.c_ops.append(np.sqrt(self.lam * n_th_mode) * self.a.dag())
+
     def __getstate__(self):
         """Return the picklable state of the Tiered solver."""
         d = super().__getstate__()
@@ -126,32 +146,3 @@ class TieredSolver(Solver):
         if store_states:
             return np.real(result.expect[0]), result.expect[1], result.states
         return np.real(result.expect[0]), result.expect[1]
-    
-    def run(self, omega_d_vals, store_states=False):
-        """Execute Tiered solver simulations across drive frequencies."""
-        worker = partial(self._worker, store_states=store_states)
-
-        return run_parallel(
-            omega_d_vals,
-            worker,
-            self.n_time,
-            store_states,
-            desc="Tiered System simulations"
-        )
-    
-    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
-        """Compute Husimi-Q functions for a Tiered solver run."""
-        states = self._get_states(omega_d)
-        return parallel_eval_husimi(
-            states,
-            self.eval_husimi,
-            theta,
-            phi,
-            method,
-            tls_idx,
-            desc="Tiered Husimi-Q Computation"
-        )
-        
-    def _get_states(self, omega_d):
-        _, _, states = self._worker(omega_d, store_states=True)
-        return states

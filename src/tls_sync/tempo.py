@@ -1,8 +1,6 @@
 from tls_sync.solver import Solver
 import numpy as np
-from .parallel import run_parallel, parallel_eval_husimi
 import oqupy
-from functools import partial
 
 class TEMPO(Solver):
     """TEMPO solver wrapper for non-Markovian process tensor simulations."""
@@ -160,43 +158,18 @@ class TEMPO(Solver):
             return exc_tempo, sp_tempo, dynamics
         return exc_tempo, sp_tempo
     
-    def run(self, omega_d_vals, store_states=False):
-        """Execute TEMPO simulations across all configured drive frequencies."""
+    def _prepare(self):
+        """Build the process tensor once per run."""
         process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
                                             start_time=0.0,
                                             end_time=self.T_total,
                                             parameters=self.tempo_params)
+        return {"process_tensor": process_tensor}
 
-        worker = partial(self._worker,
-                         process_tensor=process_tensor,
-                         store_states=store_states)
+    def _state_sequence(self, states):
+        """Unwrap the oqupy Dynamics object into its list of stored states."""
+        return states.states
 
-        return run_parallel(
-            omega_d_vals=omega_d_vals,
-            worker=worker,
-            n_time=self.n_time,
-            store_states=store_states,
-            desc="TEMPO Simulations",
-        )
-    
-    def husimi_sim(self, omega_d, theta, phi, method, tls_idx=None):
-        """Compute Husimi-Q functions for a TEMPO run at a given drive frequency."""
-        dynamics = self._get_states(omega_d)
-        return parallel_eval_husimi(
-            dynamics.states,
-            self.eval_husimi,
-            theta,
-            phi,
-            method,
-            tls_idx,
-            desc="TEMPO Husimi-Q Computation"
-        )
-    
-    def _get_states(self, omega_d):
-        process_tensor = oqupy.pt_tempo_compute(bath=self.bath,
-                                            start_time=0.0,
-                                            end_time=self.T_total,
-                                            parameters=self.tempo_params)
-
-        _, _, dynamics = self._worker(omega_d, process_tensor, store_states=True)
-        return dynamics
+    def _build_dissipators(self):
+        """TEMPO captures the bath via the process tensor; no collapse operators."""
+        pass
