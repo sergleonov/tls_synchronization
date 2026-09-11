@@ -44,10 +44,10 @@ class Dynamics:
         Output time grid, shape ``(n_time,)``.
     omegas : np.ndarray
         Drive frequencies swept, shape ``(n_omega,)`` (the leading axis).
-    expectations : dict[int, np.ndarray] | None
-        Expectation arrays keyed by operator position in ``e_ops``;
-        ``expectations[j]`` has shape ``(n_omega, n_time)``. None if the run
-        stored states instead of streaming expectations.
+    expectations : np.ndarray | None
+        A single ``(n_ops, n_omega, n_time)`` array; ``expectations[j]`` is the
+        ``(n_omega, n_time)`` heatmap grid for ``e_ops[j]``. None when the run
+        produced no expectations (e.g. an empty ``e_ops``).
     states : Sequence[Sequence[Any]] | None
         Full trajectory indexed ``[i_omega][i_time]``, or None if not stored.
     extra : dict[str, Any] | None

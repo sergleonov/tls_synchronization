@@ -43,8 +43,14 @@ class Backend(ABC):
         """Expectation value <op> in a single state (ket or density matrix)."""
 
     @abstractmethod
-    def ptrace(self, state: Any, keep: Sequence[int]) -> Any:
-        """Partial trace keeping the listed subsystem indices."""
+    def ptrace(self, state: Any, keep: Sequence[int],
+               dims: Sequence[int] | None = None) -> Any:
+        """Partial trace keeping the listed subsystem indices.
+
+        `dims` gives the subsystem dimensions (subsystem 0 most significant),
+        ordered as the tensor/kron factors. It is optional for backends whose
+        state already carries its tensor structure (QuTiP `Qobj`) and required
+        for backends whose dense arrays do not (numpy, oqupy)."""
 
     @abstractmethod
     def to_density_matrix(self, state: Any) -> Any:
@@ -106,8 +112,11 @@ class QutipBackend(Backend):
         # qt.expect returns a real float for Hermitian ops; complex() is safe either way.
         return complex(qt.expect(op, state))
 
-    def ptrace(self, state: Any, keep: Sequence[int]) -> Any:
-        # Qobj.ptrace(sel) keeps the selected subsystem indices.
+    def ptrace(self, state: Any, keep: Sequence[int],
+               dims: Sequence[int] | None = None) -> Any:
+        # Qobj.ptrace(sel) keeps the selected subsystem indices. The Qobj
+        # already carries its tensor structure, so `dims` is accepted for
+        # signature uniformity but not required.
         return state.ptrace(list(keep))
 
     def to_density_matrix(self, state: Any) -> Any:
@@ -191,13 +200,21 @@ class NumpyBackend(Backend):
         rho = self.to_density_matrix(state)
         return qt.Qobj(rho, dims=[dims, dims])
 
-    @staticmethod
-    def ptrace(rho: np.ndarray, dims: Sequence[int], keep: Sequence[int]) -> np.ndarray:
-        """General dense partial trace via einsum. `dims` orders subsystems as
-        the kron factors (subsystem 0 most significant)."""
+    def ptrace(self, state: Any, keep: Sequence[int],
+               dims: Sequence[int] | None = None) -> np.ndarray:
+        """General dense partial trace via einsum.
+
+        `dims` orders subsystems as the kron factors (subsystem 0 most
+        significant) and is required here: a dense matrix carries no tensor
+        structure to infer them from."""
+        if dims is None:
+            raise ValueError(
+                f"{type(self).__name__}.ptrace requires `dims` (the subsystem "
+                "dimensions); a dense array carries no tensor structure to infer them."
+            )
         n = len(dims)
         keep = sorted(keep)
-        rho = np.asarray(rho).reshape(list(dims) + list(dims))
+        rho = np.asarray(state).reshape(list(dims) + list(dims))
         # row labels 0..n-1; column labels reuse the row label for traced
         # subsystems (→ summed) and take a fresh label for kept ones.
         row = list(range(n))
@@ -231,10 +248,11 @@ class OqupyBackend(NumpyBackend):
         return np.asarray(oq.operators.destroy(dim), dtype=complex)
 
     def expect(self, op: Any, state: Any) -> complex:
-        # The oqupy quirk: expectation values are read off a Dynamics object,
-        # not computed from a bare state. When handed one, ask it directly and
-        # return the final-time expectation; otherwise treat `state` as a plain
-        # density matrix and defer to the numpy implementation.
+        # The oqupy subtelty: expectation values are read off a Dynamics-like
+        # object, not computed from a bare state. When handed one, ask it
+        # directly and return the full expectation time series it yields;
+        # otherwise treat `state` as a plain density matrix and defer to the
+        # numpy implementation.
         if hasattr(state, "expectations"):
             _times, values = state.expectations(np.asarray(op), real=False)
             return values

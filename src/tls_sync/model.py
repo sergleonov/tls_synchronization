@@ -10,6 +10,8 @@ from tls_sync.backend import Backend
 
 SD_TYPES = ("drude", "ohmic")
 
+#TODO: write tests for model class
+
 @dataclass
 class Bath:
     """Spectral density of a bosonic environment (method-independent physics).

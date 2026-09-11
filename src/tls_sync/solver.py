@@ -14,16 +14,19 @@ from typing import Any
 class Solver(ABC):
     """What a solver *is*: build the model in a representation, then integrate.
  
-    build_operators / build_hamiltonian are concrete here because, once the
-    physics lives in Model, they are uniform delegation. get_dynamics is the one
-    genuinely per-solver primitive; solve is a convenience wrapper over it.
+    ``__init__`` builds the observation grid and, by uniform delegation to the
+    Model, the operators, static Hamiltonian, and initial state -- so every
+    solver gets those for free. The genuinely per-solver primitives are
+    ``_prepare`` (frequency-independent setup) and ``_run_one`` (integrate one
+    drive frequency); the base provides ``single_run`` and the parallel
+    ``sweep`` on top of them.
  
     Subclasses that support a structured bath declare `SUPPORTED_SD` and call
     `_require_bath()` in their bath-rendering step; the default accepts any
     known family (a Markovian solver reads only coupling + temperature).
     """
  
-    #: spectral-density families this solver can represent (see models.SD_TYPES)
+    #: spectral-density families this solver can represent (see model.SD_TYPES)
     SUPPORTED_SD: tuple[str, ...] = ()
  
     def __init__(self, model: Model, backend: Backend, *,
@@ -62,11 +65,12 @@ class Solver(ABC):
 
     @abstractmethod
     def _prepare(self):
-        """Per-run setup shared across all drive frequencies (default: none).
+        """Per-run setup shared across all drive frequencies (abstract).
  
         A solver with an expensive, frequency-independent object -- collapse
         operators (Markovian), bath coefficients (HEOM), a process tensor
-        (TEMPO) -- builds it here once; it is passed to every `_run_one` call.
+        (TEMPO) -- builds it here once; the result is passed to every
+        `_run_one` call. Every solver must implement it.
         """
  
     @abstractmethod
@@ -129,78 +133,3 @@ class Solver(ABC):
                                 total=len(omega_d_vals),
                                 desc=f"{type(self).__name__} sweep"))
         return self._collect(omega_d_vals, results, store_states=False)
- 
-
-class MarkovianSolver(Solver):
-    """Markovian Lindblad integration via qutip.mesolve (QutipBackend)."""
-
-    def get_dynamics(self, omega_d_vals, *, store_states=False, e_ops=None) -> Dynamics:
-        # loop omega_d: build QobjEvo [H, [drive.operator, drive.coefficient]],
-        # mesolve with model.build_dissipators(...), collect into one Dynamics.
-        ...
-
-#TODO: complete HEOM solver
-class HeomSolver(Solver):
-    def __init__(self, model: Model, backend: Backend, *,
-                 T_total: float, dt: float,
-                 Nk: int = 3,            # bath-expansion terms
-                 max_depth: int = 5):    # hierarchy truncation depth
-        super().__init__(model, backend, T_total=T_total, dt=dt)
-        self.Nk = Nk
-        self.max_depth = max_depth
-
-    def get_dynamics(self, omega_d_vals, *, store_states=False, e_ops=None) -> Dynamics:
-        # loop omega_d: build QobjEvo [H, [drive.operator, drive.coefficient]],
-        # mesolve with model.build_dissipators(...), collect into one Dynamics.
-        ...
-
-#TODO: complete TEMPO solver
-class TempoSolver(Solver):
-    def __init__(self, model: Model, backend: Backend, *,
-                 T_total: float, dt: float,
-                 tcut: float = 2.5,            # memory cutoff
-                 epsrel: float = 1e-5):    # tolerance threshold
-        super().__init__(model, backend, T_total=T_total, dt=dt)
-        self.tcut = tcut
-        self.epsrel = epsrel
-
-    def get_dynamics(self, omega_d_vals, *, store_states=False, e_ops=None) -> Dynamics:
-        # loop omega_d: build QobjEvo [H, [drive.operator, drive.coefficient]],
-        # mesolve with model.build_dissipators(...), collect into one Dynamics.
-        ...
-
-#TODO: complete Tiered solver
-class TieredSolver(Solver):
-    def __init__(self, model: Model, backend: Backend, *,
-                 T_total: float, dt: float,
-                 omega_c: float = 4.0,            # cavity mode
-                 n_fock: int = 10,                # number of fock states
-                 mode_coupling: float = 0.02,
-                 bath_coupling: float = 0.002):    
-        super().__init__(model, backend, T_total=T_total, dt=dt)
-        self.omega_c = omega_c
-        self.n_fock = n_fock
-        self.mode_coupling = mode_coupling
-        self.bath_coupling = bath_coupling
-
-    def get_dynamics(self, omega_d_vals, *, store_states=False, e_ops=None) -> Dynamics:
-        # loop omega_d: build QobjEvo [H, [drive.operator, drive.coefficient]],
-        # mesolve with model.build_dissipators(...), collect into one Dynamics.
-        ...
-
-
-#TODO: complete semiclassical solver
-class SemiclassicalRK4Solver(Solver):
-    """Mean-field Maxwell-Bloch: classical cavity alpha + batched TLS rho (NumpyBackend)."""
-
-    def __init__(self, model: Model, backend: Backend, *,
-                 T_total: float, dt: float, dt_output: float | None = None,
-                 omega_c: float, kappa: float, g: float, eta_cavity: float) -> None:
-        # carries the mean-field cavity params (see DECISION 2)
-        ...
-
-    def get_dynamics(self, omega_d_vals, *, store_states=False, e_ops=None) -> Dynamics:
-        # batched RK4 over all omega_d at once; returns Dynamics with the rho
-        # trajectory in `states` and the cavity amplitude in extra["alpha"].
-        ...
-
