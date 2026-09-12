@@ -20,10 +20,10 @@ class MarkovianSolver(Solver):
     SUPPORTED_SD = SD_TYPES
 
     def __init__(self, model: Any, backend: Any, *,
-                 T_total: float, dt: float, dt_output: float | None = None,
+                 T_total: float, dt: float,
                  nsteps: int = 5000) -> None:
         # base builds self.ops, self.H, self.rho0, self.times
-        super().__init__(model, backend, T_total=T_total, dt=dt, dt_output=dt_output)
+        super().__init__(model, backend, T_total=T_total, dt=dt)
         self.nsteps = nsteps
 
     def _prepare(self) -> list[Any]:

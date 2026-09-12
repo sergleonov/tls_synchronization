@@ -30,17 +30,13 @@ class Solver(ABC):
     SUPPORTED_SD: tuple[str, ...] = ()
  
     def __init__(self, model: Model, backend: Backend, *,
-                 T_total: float, dt: float, dt_output: float | None = None) -> None:
+                 T_total: float, dt: float) -> None:
         self.model = model
         self.backend = backend
         self.T_total = T_total
         self.dt = dt
-        self.dt_output = dt_output or dt
- 
-        # DECISION 1 (drive placement): observation grid (T_total, dt, dt_output)
-        # lives on the Solver (numerics); drive protocol (amplitude, T_drive,
-        # envelope) lives on the Model via Drive. Split flagged for your review.
-        self.times = np.arange(0.0, self.T_total + 0.5 * self.dt_output, self.dt_output)
+
+        self.times = np.arange(0.0, self.T_total + 0.5 * self.dt, self.dt)
  
         # common construction: uniform delegation to the model, so every solver
         # gets operators, static Hamiltonian, and initial state for free.

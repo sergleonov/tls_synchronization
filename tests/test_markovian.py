@@ -2,11 +2,10 @@
 
 Covers construction, bath rendering, the bath-capability contract, result
 assembly, and the real `mesolve` paths (`single_run` and the parallel `sweep`).
-Simulations are deliberately tiny (2 TLS, 3 time points, a few drive
+Simulations are deliberately tiny (2 TLS, 5 time points, a few drive
 frequencies) so the suite runs quickly.
 
-Flat imports match the current working layout; inside the package these become
-relative. Run with `pytest test_markovian.py`.
+Imports are absolute (`tls_sync.*`). Run with `pytest test_markovian.py`.
 """
 
 import numpy as np
@@ -19,15 +18,15 @@ from tls_sync.helpers import Dynamics
 
 
 def make_model(bath=True):
-    b = Bath("ohmic", coupling=0.02, cutoff=0.05, temperature=0.5, ohmicity=1.0) if bath else None
+    b = Bath("power", coupling=0.02, cutoff=0.05, temperature=0.5, ohmicity=1.0) if bath else None
     return TLSChainModel(omega_tls=[3.95, 4.05], J=0.001, Omega_amp=0.1,
                          T_drive=0.5, n_tls=2, bath=b)
 
 
 def make_solver(bath=True, **kw):
-    # T_total=1.0, dt_output=0.5 -> times = [0.0, 0.5, 1.0]
+    # T_total=1.0, dt=0.25 -> times = [0.0, 0.25, 0.5, 0.75, 1.0]
     return MarkovianSolver(make_model(bath=bath), QutipBackend(),
-                           T_total=1.0, dt=0.25, dt_output=0.5, **kw)
+                           T_total=1.0, dt=0.25, **kw)
 
 
 # --- construction ---------------------------------------------------------- #
@@ -38,7 +37,7 @@ def test_init_builds_state_and_grid():
     assert s.H.shape == (4, 4)
     assert (s.H - s.H.dag()).norm() < 1e-12                 # Hermitian
     assert abs(s.rho0.tr() - 1.0) < 1e-12                   # normalized state
-    assert len(s.times) == 3 and s.times[0] == 0.0 and np.isclose(s.times[-1], 1.0)
+    assert len(s.times) == 5 and s.times[0] == 0.0 and np.isclose(s.times[-1], 1.0)
     assert s.nsteps == 5000
 
 
@@ -78,7 +77,7 @@ def test_default_e_ops_are_collective():
 # --- bath-capability contract (_require_bath, inherited) ------------------- #
 
 def test_require_bath_ok():
-    assert make_solver(bath=True)._require_bath().sd_type == "ohmic"
+    assert make_solver(bath=True)._require_bath().sd_type == "power"
 
 
 def test_require_bath_missing_raises():
@@ -89,9 +88,9 @@ def test_require_bath_missing_raises():
 def test_require_bath_unsupported_sd_raises():
     class DrudeOnly(MarkovianSolver):
         SUPPORTED_SD = ("drude",)
-    s = DrudeOnly(make_model(bath=True), QutipBackend(), T_total=1.0, dt=0.25, dt_output=0.5)
+    s = DrudeOnly(make_model(bath=True), QutipBackend(), T_total=1.0, dt=0.25)
     with pytest.raises(ValueError):
-        s._require_bath()                                      # model bath is 'ohmic'
+        s._require_bath()                                      # model bath is 'power'
 
 
 # --- _collect (operator-first assembly) ------------------------------------ #

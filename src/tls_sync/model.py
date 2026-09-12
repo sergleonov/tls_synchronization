@@ -8,7 +8,7 @@ from typing import Any, Sequence
 from tls_sync.helpers import Operators, Drive
 from tls_sync.backend import Backend
 
-SD_TYPES = ("drude", "ohmic")
+SD_TYPES = ("drude", "power")
 
 #TODO: write tests for model class
 
@@ -24,9 +24,9 @@ class Bath:
 
     Parameters
     ----------
-    sd_type : {'drude', 'ohmic'}
+    sd_type : {'drude', 'power'}
         Spectral-density family. 'drude' is a Drude-Lorentz (Lorentzian) bath;
-        'ohmic' is a power-law bath with a cutoff.
+        'power' is a power-law bath with a cutoff.
     coupling : float
         System-bath coupling strength (``lam`` for Drude, ``alpha`` for Ohmic).
     cutoff : float
@@ -34,7 +34,7 @@ class Bath:
     temperature : float
         Bath temperature.
     ohmicity : float or None
-        Power-law exponent (``s``/``zeta``). Required for 'ohmic', ignored for
+        Power-law exponent (``s``/``zeta``). Required for 'power', ignored for
         'drude'.
     cutoff_type : str
         Shape of the power-law cutoff (used by Ohmic/power-law representations,
