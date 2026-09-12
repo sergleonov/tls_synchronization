@@ -28,9 +28,8 @@ from qutip.core.environment import (
 )
 from typing import Any
 
+from tls_sync.backend import QutipBackend
 from tls_sync.solver import Solver
-from tls_sync.model import SD_TYPES
-
 
 class HeomSolver(Solver):
     """Numerically-exact open-system integration via qutip's ``HEOMSolver``.
@@ -39,6 +38,9 @@ class HeomSolver(Solver):
     density families are supported: 'drude' via a Matsubara expansion and
     'power' (power-law) via a correlation-function fit. The unsupported-family / missing-bath
     guard is the inherited ``_require_bath`` (HEOM requires a bath).
+
+    The QuTiP backend is fixed via the ``BACKEND`` class attribute, so callers
+    construct the solver with just the model (no backend argument).
 
     Truncation knobs live here (solver numerics), never on the Bath (physics):
 
@@ -53,13 +55,14 @@ class HeomSolver(Solver):
 
     # HEOM represents the bath by its exponential expansion, so any supported
     # spectral-density family is fine (Markovian-style capability check only).
-    SUPPORTED_SD = SD_TYPES
+    SUPPORTED_SD = ("power", "drude")
+    BACKEND = QutipBackend()
 
-    def __init__(self, model: Any, backend: Any, *,
+    def __init__(self, model: Any, *,
                  T_total: float, dt: float,
                  Nk: int = 3, max_depth: int = 5, nsteps: int = 5000) -> None:
         # base builds self.ops, self.H, self.rho0, self.times
-        super().__init__(model, backend, T_total=T_total, dt=dt)
+        super().__init__(model, self.BACKEND, T_total=T_total, dt=dt)
         self.Nk = Nk
         self.max_depth = max_depth
         self.nsteps = nsteps

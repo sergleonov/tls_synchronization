@@ -28,7 +28,6 @@ import numpy as np
 import pytest
 from qutip.core.environment import ExponentialBosonicEnvironment
 
-from tls_sync.backend import QutipBackend
 from tls_sync.model import Bath, TLSChainModel, SD_TYPES
 from tls_sync.heom import HeomSolver
 from tls_sync.helpers import Dynamics
@@ -48,7 +47,7 @@ def make_solver(sd="drude", *, T_total=1.0, dt=0.25,
                 Nk=1, max_depth=2, **kw):
     # T_total=1.0, dt=0.25; times = [0.0, 0.25, 0.5, 0.75, 1.0], small Nk/max_depth
     # keep the hierarchy tiny so real runs finish quickly.
-    return HeomSolver(make_model(sd), QutipBackend(),
+    return HeomSolver(make_model(sd),
                       T_total=T_total, dt=dt,
                       Nk=Nk, max_depth=max_depth, **kw)
 
@@ -65,7 +64,7 @@ def test_init_builds_state_grid_and_knobs():
 
 
 def test_supported_sd():
-    assert set(HeomSolver.SUPPORTED_SD) == set(SD_TYPES)
+    assert set(HeomSolver.SUPPORTED_SD) <= set(SD_TYPES)
 
 
 # --- bath creation --------------------------------------------------------- #

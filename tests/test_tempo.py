@@ -14,7 +14,8 @@ short-memory process tensor, a couple of drive frequencies):
 * results             -- real ``oqupy.compute_dynamics`` via ``single_run`` and
                          the parallel ``sweep``
 
-Use with an OqupyBackend (operators are dense, oqupy-compatible numpy arrays).
+TempoSolver runs on the OqupyBackend automatically (fixed via its ``BACKEND``
+class attribute; operators are dense, oqupy-compatible numpy arrays).
 Run with `pytest test_tempo.py` in an environment with oqupy installed.
 """
 import pickle
@@ -22,7 +23,6 @@ import pickle
 import numpy as np
 import pytest
 
-from tls_sync.backend import OqupyBackend
 from tls_sync.model import Bath, TLSChainModel, SD_TYPES
 from tls_sync.tempo import TempoSolver
 from tls_sync.helpers import Dynamics
@@ -41,8 +41,8 @@ def make_model(sd="power"):
 def make_solver(sd="power", *, T_total=0.5, dt=0.25, tcut=1.0, epsrel=1e-3, **kw):
     # T_total=0.5, dt=0.25 -> times = [0.0, 0.25, 0.5]; short tcut + loose epsrel
     # keep the process tensor tiny so real runs finish quickly.
-    return TempoSolver(make_model(sd), OqupyBackend(),
-                       T_total=T_total, dt=dt, tcut=tcut, epsrel=epsrel, **kw)
+    return TempoSolver(make_model(sd), T_total=T_total, 
+                       dt=dt, tcut=tcut, epsrel=epsrel, **kw)
 
 
 # --- initialization -------------------------------------------------------- #

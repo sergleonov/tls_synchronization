@@ -9,21 +9,27 @@ expansion and TEMPO's correlation function. Requires a QuTiP backend.
 import qutip as qt
 import numpy as np
 from typing import Any
+from tls_sync.backend import QutipBackend
 from tls_sync.solver import Solver
 from tls_sync.model import SD_TYPES
 
 class MarkovianSolver(Solver):
-    """Markovian Lindblad integration via qutip.mesolve."""
+    """Markovian Lindblad integration via qutip.mesolve.
+
+    The QuTiP backend is fixed via the ``BACKEND`` class attribute, so callers
+    construct the solver with just the model (no backend argument).
+    """
 
     # Mesolve reads only the bath's coupling and temperature (weak-coupling
     # limit) and ignores the spectral-density shape, so any family is acceptable.
     SUPPORTED_SD = SD_TYPES
+    BACKEND = QutipBackend()
 
-    def __init__(self, model: Any, backend: Any, *,
+    def __init__(self, model: Any, *,
                  T_total: float, dt: float,
                  nsteps: int = 5000) -> None:
         # base builds self.ops, self.H, self.rho0, self.times
-        super().__init__(model, backend, T_total=T_total, dt=dt)
+        super().__init__(model, self.BACKEND, T_total=T_total, dt=dt)
         self.nsteps = nsteps
 
     def _prepare(self) -> list[Any]:

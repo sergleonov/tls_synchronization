@@ -11,7 +11,6 @@ Imports are absolute (`tls_sync.*`). Run with `pytest test_markovian.py`.
 import numpy as np
 import pytest
 
-from tls_sync.backend import QutipBackend
 from tls_sync.model import Bath, TLSChainModel, SD_TYPES
 from tls_sync.markovian import MarkovianSolver
 from tls_sync.helpers import Dynamics
@@ -25,7 +24,7 @@ def make_model(bath=True):
 
 def make_solver(bath=True, **kw):
     # T_total=1.0, dt=0.25 -> times = [0.0, 0.25, 0.5, 0.75, 1.0]
-    return MarkovianSolver(make_model(bath=bath), QutipBackend(),
+    return MarkovianSolver(make_model(bath=bath),
                            T_total=1.0, dt=0.25, **kw)
 
 
@@ -88,7 +87,7 @@ def test_require_bath_missing_raises():
 def test_require_bath_unsupported_sd_raises():
     class DrudeOnly(MarkovianSolver):
         SUPPORTED_SD = ("drude",)
-    s = DrudeOnly(make_model(bath=True), QutipBackend(), T_total=1.0, dt=0.25)
+    s = DrudeOnly(make_model(bath=True), T_total=1.0, dt=0.25)
     with pytest.raises(ValueError):
         s._require_bath()                                      # model bath is 'power'
 

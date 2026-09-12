@@ -27,6 +27,7 @@ import oqupy
 from typing import Any
 
 from tls_sync.solver import Solver
+from tls_sync.backend import OqupyBackend
 
 
 class TempoSolver(Solver):
@@ -47,12 +48,13 @@ class TempoSolver(Solver):
     # is not rendered here. ('power' is the common subset of model.SD_TYPES used
     # for HEOM-vs-TEMPO comparison.)
     SUPPORTED_SD = ("power",)
+    BACKEND =  OqupyBackend()
 
-    def __init__(self, model: Any, backend: Any, *,
+    def __init__(self, model: Any, *,
                  T_total: float, dt: float,
-                 tcut: float = 5.0, epsrel: float = 1e-4) -> None:
+                 tcut: float = 2.5, epsrel: float = 1e-5) -> None:
         # base builds self.ops, self.H, self.rho0, self.times
-        super().__init__(model, backend, T_total=T_total, dt=dt)
+        super().__init__(model, self.BACKEND, T_total=T_total, dt=dt)
         self.tcut = tcut
         self.epsrel = epsrel
 
