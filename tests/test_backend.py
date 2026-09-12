@@ -1,4 +1,4 @@
-"""Tests for :mod:`tls_sync.backends`.
+"""Tests for :mod:`tls_sync.backend`.
 
 The module exposes three interchangeable representations of the same quantum
 operators/states -- a QuTiP ``Qobj`` backend, a dense NumPy backend, and an
@@ -9,17 +9,17 @@ reference (and each other).
 
 Notes
 -----
-* Import path assumes the source lives at ``tls_sync/backends.py`` (the package
-  ``module-name`` declared in ``pyproject.toml``). Adjust the import below if
-  your layout differs.
-* ``qutip`` and ``oqupy`` are hard dependencies of the module (both are imported
-  at module top level), so if either is missing the whole file is skipped
-  cleanly rather than erroring during collection.
+* The module under test is ``tls_sync/backend.py`` (imported below as
+  ``tls_sync.backend``); adjust the import if your layout differs.
+* ``qutip`` and ``oqupy`` are hard dependencies of ``tls_sync.backend`` (both are
+  imported at its module top level), so this suite requires both installed -- a
+  missing one surfaces as an import error at collection time.
 """
 
 import numpy as np
 import pytest
-import qutip as qt 
+import qutip as qt
+import oqupy
 
 from tls_sync.backend import (
     Backend,
@@ -332,7 +332,7 @@ class TestExpectArrayMultiState:
 
 
 # --------------------------------------------------------------------------- #
-# ptrace() -- signatures differ between the qutip and dense backends
+# ptrace() -- unified signature ptrace(state, keep, dims=None) across backends
 # --------------------------------------------------------------------------- #
 
 class TestPtraceQutip:
@@ -352,9 +352,18 @@ class TestPtraceQutip:
         assert np.allclose(dense(be.ptrace(rho, [0])), RHO0)
         assert np.allclose(dense(be.ptrace(rho, [1])), RHO1)
 
+    def test_dims_argument_is_accepted_but_optional(self):
+        # A Qobj carries its own tensor structure, so `dims` is accepted for
+        # signature uniformity but must not change the result.
+        be = QutipBackend()
+        bell = self._bell()
+        assert np.allclose(dense(be.ptrace(bell, [0])),
+                           dense(be.ptrace(bell, [0], [2, 2])))
+
 
 class TestPtraceDense:
-    """NumpyBackend.ptrace is a static method taking (rho, dims, keep)."""
+    """NumpyBackend.ptrace(state, keep, dims): a dense matrix carries no tensor
+    structure, so `dims` is required (unlike the QuTiP backend)."""
 
     def _bell_rho(self):
         bell = np.array([1, 0, 0, 1], dtype=complex) / np.sqrt(2)
@@ -384,6 +393,11 @@ class TestPtraceDense:
         expected = np.outer(qutrit, qutrit.conj())
         assert reduced.shape == (3, 3)
         assert np.allclose(reduced, expected)
+
+    def test_missing_dims_raises_value_error(self, array_backend):
+        # Dense backends cannot infer the tensor factorization from the matrix.
+        with pytest.raises(ValueError):
+            array_backend.ptrace(self._bell_rho(), [0])
 
     def test_agrees_with_qutip(self):
         rho = self._bell_rho()
@@ -450,3 +464,41 @@ class TestToQobj:
         q = array_backend.to_qobj(RHO0, [2])
         assert isinstance(q, qt.Qobj)
         assert np.allclose(q.full(), RHO0)
+
+
+# --------------------------------------------------------------------------- #
+# OqupyBackend.expect()
+# --------------------------------------------------------------------------- #
+
+class TestOqupyExpect:
+    """OqupyBackend.expect reads a whole expectation series off a real oqupy
+    ``Dynamics`` object, and otherwise defers to the numpy computation."""
+
+    @staticmethod
+    def _dynamics(states, times):
+        # A real oqupy Dynamics carrying the given density matrices at the given
+        # times -- no stand-in object; expect() must read its `.expectations`.
+        return oqupy.Dynamics(times=list(times), states=list(states))
+
+    def test_reads_expectation_series_off_a_dynamics(self):
+        be = OqupyBackend()
+        dyn = self._dynamics([RHO0, RHO1], [0.0, 1.0])
+        out = be.expect(be.sigma("z"), dyn)
+        # the *whole* <sigma_z> series (not just the final point):
+        #   <0|z|0> = +1,  <1|z|1> = -1
+        assert np.allclose(out, [1.0, -1.0])
+
+    def test_series_keeps_the_imaginary_part(self):
+        # |+i><+i| has <sigma_+> = i/2; expect reads with real=False, so the
+        # imaginary part must survive (a real-only read would drop it).
+        be = OqupyBackend()
+        plus_i = np.array([1, 1j], dtype=complex) / np.sqrt(2)
+        rho = np.outer(plus_i, plus_i.conj())
+        out = be.expect(be.sigma("+"), self._dynamics([rho], [0.0]))
+        assert np.allclose(out, [0.5j])
+
+    def test_falls_back_to_numpy_for_plain_states(self):
+        be = OqupyBackend()
+        z = be.sigma("z")
+        assert be.expect(z, np.array([1, 0], dtype=complex)) == pytest.approx(1.0)
+        assert be.expect(z, RHO1) == pytest.approx(-1.0)
