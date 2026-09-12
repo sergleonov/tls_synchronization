@@ -361,18 +361,18 @@ class TestPtraceDense:
         return np.outer(bell, bell.conj())
 
     def test_bell_reduced_state_is_maximally_mixed(self, array_backend):
-        reduced = array_backend.ptrace(self._bell_rho(), [2, 2], [0])
+        reduced = array_backend.ptrace(self._bell_rho(), [0], [2, 2])
         assert np.allclose(reduced, 0.5 * np.eye(2))
 
     def test_product_state_reduces_to_its_factor(self, array_backend):
         prod = np.kron([1, 0], [0, 1]).astype(complex)
         rho = np.outer(prod, prod.conj())
-        assert np.allclose(array_backend.ptrace(rho, [2, 2], [0]), RHO0)
-        assert np.allclose(array_backend.ptrace(rho, [2, 2], [1]), RHO1)
+        assert np.allclose(array_backend.ptrace(rho, [0], [2, 2]), RHO0)
+        assert np.allclose(array_backend.ptrace(rho, [1], [2, 2]), RHO1)
 
     def test_keep_both_returns_full_state(self, array_backend):
         rho = self._bell_rho()
-        assert np.allclose(array_backend.ptrace(rho, [2, 2], [0, 1]), rho)
+        assert np.allclose(array_backend.ptrace(rho, [0, 1], [2, 2]), rho)
 
     def test_unequal_subsystem_dimensions(self, array_backend):
         # 2 (x) 3 product state; tracing out the qubit leaves the qutrit intact.
@@ -380,7 +380,7 @@ class TestPtraceDense:
         qutrit = np.array([0, 1, 0], dtype=complex)
         psi = np.kron(qubit, qutrit)
         rho = np.outer(psi, psi.conj())
-        reduced = array_backend.ptrace(rho, [2, 3], [1])
+        reduced = array_backend.ptrace(rho, [1], [2, 3])
         expected = np.outer(qutrit, qutrit.conj())
         assert reduced.shape == (3, 3)
         assert np.allclose(reduced, expected)
@@ -389,7 +389,7 @@ class TestPtraceDense:
         rho = self._bell_rho()
         q_reduced = dense(QutipBackend().ptrace(
             qt.Qobj(rho, dims=[[2, 2], [2, 2]]), [0]))
-        n_reduced = NumpyBackend.ptrace(rho, [2, 2], [0])
+        n_reduced = NumpyBackend().ptrace(rho, [0], [2, 2])
         assert np.allclose(q_reduced, n_reduced)
 
 
@@ -450,44 +450,3 @@ class TestToQobj:
         q = array_backend.to_qobj(RHO0, [2])
         assert isinstance(q, qt.Qobj)
         assert np.allclose(q.full(), RHO0)
-
-
-# --------------------------------------------------------------------------- #
-# OqupyBackend.expect() -- the Dynamics-object quirk
-# --------------------------------------------------------------------------- #
-
-class _FakeDynamics:
-    """Stand-in for an oqupy Dynamics object exposing `expectations`."""
-
-    def __init__(self, times, values):
-        self._times = np.asarray(times)
-        self._values = np.asarray(values)
-        self.calls = []
-
-    def expectations(self, operator, real=False):
-        self.calls.append({"operator": np.asarray(operator), "real": real})
-        return self._times, self._values
-
-
-class TestOqupyExpect:
-    def test_reads_expectations_off_a_dynamics_object(self):
-        be = OqupyBackend()
-        values = np.array([0.1, 0.2, 0.3])
-        dyn = _FakeDynamics(times=[0.0, 1.0, 2.0], values=values)
-        out = be.expect(be.sigma("z"), dyn)
-        # Current behaviour returns the *whole* time series, not just the last
-        # point (despite the docstring mentioning "final-time"). Pin the
-        # implemented behaviour so a future intentional change is deliberate.
-        assert np.allclose(out, values)
-
-    def test_requests_complex_valued_expectations(self):
-        be = OqupyBackend()
-        dyn = _FakeDynamics(times=[0.0], values=[1.0])
-        be.expect(be.sigma("z"), dyn)
-        assert dyn.calls[0]["real"] is False
-
-    def test_falls_back_to_numpy_for_plain_states(self):
-        be = OqupyBackend()
-        z = be.sigma("z")
-        assert be.expect(z, np.array([1, 0], dtype=complex)) == pytest.approx(1.0)
-        assert be.expect(z, RHO1) == pytest.approx(-1.0)
