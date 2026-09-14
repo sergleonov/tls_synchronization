@@ -17,20 +17,20 @@ Everything else stays under its own module, reached as ``tls_sync.<module>``:
 from .solver import Solver              # abstract base, for typing / subclassing
 from .markovian import MarkovianSolver
 from .heom import HeomSolver
-# Additional concrete solvers get added here as they land, e.g.:
-# from .tempo import TempoSolver
-# from .tiered import TieredSolver
-# from .semiclassical import SemiclassicalRK4Solver
+from .tempo import TempoSolver
+from .semiclassical import SemiclassicalSolver
+# The tiered (TLS + quantized cavity) case has no dedicated solver: run a
+# tls_sync.model.TLSCavityModel with MarkovianSolver (the cavity is just another
+# subsystem for qutip.mesolve).
 from . import plotting, utils, backend, model, helpers
-# `correlations` is planned (Pearson/PLV/mutual-info over a Dynamics) but is not
-# a module yet; re-enable this import and its __all__ entry once it lands.
-# from . import correlations
 
 __all__ = [
     # solvers
     "Solver",
     "MarkovianSolver",
     "HeomSolver",
+    "TempoSolver",
+    "SemiclassicalSolver",
     # modules
     "backend",
     "model",

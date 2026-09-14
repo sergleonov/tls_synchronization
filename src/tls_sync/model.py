@@ -10,11 +10,12 @@ from tls_sync.backend import Backend
 
 SD_TYPES = ("drude", "power")
 
+#TODO: write tests for model class
+
 #TODO: add Jxx coupling terms to the hamiltonians
 
 @dataclass
 class Bath:
-    #TODO: maybe add a separate simpler markovian bath that can be used for the tiered model
     """Spectral density of a bosonic environment (method-independent physics).
 
     The same object is consumed differently by each solver, so it stores only
@@ -257,6 +258,14 @@ class TLSCavityModel(Model):
 
     For the *semiclassical* (mean-field) treatment of the cavity use
     :class:`SemiclassicalCavityModel`, whose Hilbert space is the TLS chain alone.
+
+    There is no dedicated "tiered" solver: run this model with
+    :class:`~tls_sync.markovian.MarkovianSolver`. Once the physics lives on the
+    model (operators, Hamiltonian, thermal + cavity dissipators, drive, initial
+    state), the solver is a plain ``qutip.mesolve`` integrator that treats the
+    cavity Fock mode as just another subsystem -- so ``MarkovianSolver(model)``
+    *is* the tiered solver. Pass cavity observables (e.g. ``a.dag()*a``) as
+    ``e_ops`` when you want them; the defaults are the TLS collective operators.
 
     Simplifying assumptions (provisional): a single sz-sz TLS-TLS coupling ``J``
     and a single, uniform TLS-cavity coupling ``g``.

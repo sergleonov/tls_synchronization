@@ -92,7 +92,6 @@ class Solver(ABC):
         the ``(n_omega, n_time)`` heatmap grid for the j-th operator.
         """
         if store_states:
-            #TODO: verify this logic
             expects, states = zip(*results)
             states = list(states)
         else:
