@@ -33,31 +33,14 @@ class MarkovianSolver(Solver):
         self.nsteps = nsteps
 
     def _prepare(self) -> list[Any]:
-        """Collapse operators for the run: model phenomenological + bath-Markovian.
+        """Lindblad collapse operators for the run (frequency-independent).
 
-        Built once per run (frequency-independent) and reused for every frequency.
+        The model renders its own dissipation via ``build_dissipators`` -- the
+        thermal bath collapse operators plus any phenomenological/cavity channels
+        -- so the solver just collects them. A bath-less model yields ``[]``
+        (a closed, unitary run).
         """
-        return (self.model.build_dissipators(self.backend, self.ops)
-                + self._bath_to_collapse_ops())
-
-    def _bath_to_collapse_ops(self) -> list[Any]:
-        """Render the model's bath into individual thermal collapse operators.
-
-            sqrt(lam * (n_i + 1)) * sm_i    (emission)
-            sqrt(lam *  n_i     ) * sp_i    (absorption)
-
-        with ``lam = bath.coupling`` and ``n_i = 1/(exp(omega_i/T) - 1)`` at
-        ``T = bath.temperature``. Empty if the model carries no bath.
-        """
-        bath = self._require_bath()
-
-        lam, T = bath.coupling, bath.temperature
-        c_ops: list[Any] = []
-        for i in range(self.model.n_tls):
-            n_i = 1.0 / (np.exp(self.model.omega_tls[i] / T) - 1.0)
-            c_ops.append(float(np.sqrt(lam * (n_i + 1.0))) * self.ops.sm[i])
-            c_ops.append(float(np.sqrt(lam * n_i)) * self.ops.sp[i])
-        return c_ops
+        return self.model.build_dissipators(self.backend, self.ops)
 
     def _run_one(self, omega_d, prepared, e_ops, store_states) -> tuple[list[np.ndarray], list[Any] | None]:
         """Integrate one drive frequency with mesolve (runs in a worker process).

@@ -48,7 +48,7 @@ def test_supported_sd():
 
 def test_collapse_ops_rates():
     s = make_solver(bath=True)
-    c = s._bath_to_collapse_ops()
+    c = s.model.build_dissipators(s.backend, s.ops)         # model renders the bath now
     assert len(c) == 2 * s.model.n_tls                      # emission + absorption per TLS
     lam, T = s.model.bath.coupling, s.model.bath.temperature
     n0 = 1.0 / (np.exp(s.model.omega_tls[0] / T) - 1.0)
@@ -56,15 +56,20 @@ def test_collapse_ops_rates():
     assert (c[1] - np.sqrt(lam * n0) * s.ops.sp[0]).norm() < 1e-12          # absorption, TLS 0
 
 
-def test_collapse_ops_empty_without_bath():
-    with pytest.raises(ValueError):
-        make_solver(bath=False)._bath_to_collapse_ops()
+def test_dissipators_empty_without_bath():
+    # A bath-less model has no dissipation -> [] (a closed, unitary Markovian run),
+    # but it must say so rather than drop the ops silently.
+    s = make_solver(bath=False)
+    with pytest.warns(UserWarning):
+        c = s.model.build_dissipators(s.backend, s.ops)
+    assert c == []
 
 
-def test_prepare_combines_model_and_bath():
+def test_prepare_is_model_dissipators():
     s = make_solver(bath=True)
-    assert s.model.build_dissipators(s.backend, s.ops) == []   # chain has no ad-hoc terms
-    assert len(s._prepare()) == 2 * s.model.n_tls              # so _prepare == bath ops
+    # the model renders its own thermal collapse ops; _prepare just collects them.
+    assert len(s.model.build_dissipators(s.backend, s.ops)) == 2 * s.model.n_tls
+    assert len(s._prepare()) == 2 * s.model.n_tls
 
 
 def test_default_e_ops_are_collective():

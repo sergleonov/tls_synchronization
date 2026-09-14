@@ -9,8 +9,9 @@ Markovian solver's thermal collapse operators and TEMPO's correlation function.
 Requires a QuTiP backend.
 
 Unlike the Markovian solver, HEOM captures the bath non-perturbatively, so it
-uses no Lindblad collapse operators; the model's phenomenological dissipators
-(``model.build_dissipators``) are not consumed here.
+uses no Lindblad collapse operators; the model's Lindblad-form dissipators
+(``model.build_dissipators``) are not consumed here -- HEOM renders ``model.bath``
+from its spectral density instead.
 
 Picklability (parallel ``sweep``): a QuTiP environment / HEOM bath object is not
 picklable, so ``_prepare`` returns only the bare exponential coefficients (numpy
