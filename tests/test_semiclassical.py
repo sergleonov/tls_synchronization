@@ -5,8 +5,9 @@ are deliberately tiny (2 TLS, 3 output points, a couple of drive frequencies, a
 handful of RK4 steps). Coverage:
 
 * initialization      -- grid, stored knobs, the dt/dt_output split + validation
-* dissipators         -- gamma / gamma_phi rendered into Lindblad triples; the
-                         bath-less "no warning" contract; _run_one refuses (batched)
+* dissipators         -- gamma (thermal at `temperature`) / gamma_phi rendered
+                         into Lindblad triples; no bath (a bath arg is rejected)
+                         and warning-free rendering; _run_one refuses (batched)
 * results             -- real batched RK4 via single_run and sweep, with the
                          classical cavity field in ``extra["alpha"]``
 * vectorization       -- a batched sweep reproduces each single-frequency run
@@ -24,17 +25,26 @@ from tls_sync.semiclassical import SemiclassicalSolver
 from tls_sync.helpers import Dynamics
 
 
-def make_model(*, gamma=5e-4, gamma_phi=5e-5, bath=None):
+def make_model(*, gamma=5e-4, gamma_phi=5e-5, temperature=0.0):
     return SemiclassicalCavityModel(
         omega_tls=[3.95, 4.05], J=0.001, Omega_amp=0.1, T_drive=0.5,
         omega_c=4.0, g=0.02, kappa=0.001, eta=1e-4,
-        gamma=gamma, gamma_phi=gamma_phi, n_tls=2, bath=bath)
+        gamma=gamma, gamma_phi=gamma_phi, temperature=temperature, n_tls=2)
 
 
 def make_solver(*, T_total=1.0, dt=0.1, dt_output=0.5, **model_kw):
     # T_total=1.0, dt=0.1, dt_output=0.5 -> times = [0.0, 0.5, 1.0] (10 RK4 steps)
     return SemiclassicalSolver(make_model(**model_kw),
                                T_total=T_total, dt=dt, dt_output=dt_output)
+
+
+def _has_channel(triples, target):
+    """True if `target` collapse operator appears among the triples' C's.
+
+    Collapse operators are summed in the Lindblad term, so their order is a free
+    implementation detail -- tests check presence, not position.
+    """
+    return any(np.allclose(C, target) for C, _, _ in triples)
 
 
 # --- initialization -------------------------------------------------------- #
@@ -66,10 +76,15 @@ def test_prepare_dissipator_triples():
     s = make_solver(gamma=5e-4, gamma_phi=5e-5)
     triples = s._prepare()
     assert len(triples) == 2 * s.model.n_tls                 # relaxation + dephasing per TLS
-    C, Cd, CdC = triples[0]                                  # first channel: sqrt(gamma) sm_0
-    assert np.allclose(C, np.sqrt(s.model.gamma) * s.ops.sm[0])
-    assert np.allclose(Cd, C.conj().T)                       # C^dag
-    assert np.allclose(CdC, C.conj().T @ C)                  # C^dag C
+    g, gp = s.model.gamma, s.model.gamma_phi
+    # order-independent: each expected channel is present (T=0 -> emission only)
+    for i in range(s.model.n_tls):
+        assert _has_channel(triples, np.sqrt(g) * s.ops.sm[i])         # relaxation
+        assert _has_channel(triples, np.sqrt(gp / 2.0) * s.ops.sz[i])  # dephasing
+    # every triple is a well-formed (C, C^dag, C^dag C)
+    for C, Cd, CdC in triples:
+        assert np.allclose(Cd, C.conj().T)
+        assert np.allclose(CdC, C.conj().T @ C)
 
 
 def test_prepare_empty_without_dissipation():
@@ -78,13 +93,35 @@ def test_prepare_empty_without_dissipation():
     assert s._prepare() == []
 
 
-def test_no_bath_does_not_warn():
-    # SemiclassicalCavityModel is bath-less by design (dissipation is
-    # gamma/gamma_phi), so rendering must NOT warn -- unlike the quantum models.
-    s = make_solver()                                        # bath=None
+def test_thermal_gamma_adds_absorption():
+    # gamma is a thermal relaxation channel: pure emission at T=0, and it gains
+    # an upward sqrt(gamma * n_i) sp_i operator per TLS once T > 0.
+    n = 2
+    cold = make_solver(gamma=5e-4, gamma_phi=0.0, temperature=0.0)
+    hot = make_solver(gamma=5e-4, gamma_phi=0.0, temperature=2.0)
+    assert len(cold._prepare()) == n            # emission only
+    hot_tr = hot._prepare()
+    assert len(hot_tr) == 2 * n                 # emission + absorption per TLS
+    m = hot.model
+    n0 = 1.0 / (np.exp(m.omega_tls[0] / m.temperature) - 1.0)
+    # order-independent: both the enhanced emission and the new absorption op are present
+    assert _has_channel(hot_tr, np.sqrt(m.gamma * (n0 + 1.0)) * hot.ops.sm[0])
+    assert _has_channel(hot_tr, np.sqrt(m.gamma * n0) * hot.ops.sp[0])
+
+
+def test_build_dissipators_does_not_warn():
+    # SemiclassicalCavityModel carries no bath (it takes no `bath` argument), so
+    # rendering its Lindblad channels must never emit a warning.
+    s = make_solver()
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)          # any UserWarning -> error
         s._prepare()
+
+
+def test_model_rejects_bath_argument():
+    # the bath is intentionally gone: passing one is an error, not silently kept.
+    with pytest.raises(TypeError):
+        SemiclassicalCavityModel(omega_tls=[3.95, 4.05], bath=None)
 
 
 def test_run_one_is_not_implemented():
