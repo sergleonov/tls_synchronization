@@ -35,7 +35,7 @@ class Drive:
 @dataclass
 class Dynamics:
     """Outputs of a solver run over a drive-frequency sweep.
- 
+
     Attributes
     ----------
     backend : Backend
@@ -54,7 +54,7 @@ class Dynamics:
         Solver-specific data that is not an operator expectation, e.g. a
         semiclassical solver's classical cavity field ``{"alpha": ...}``.
     """
- 
+
     backend: Backend
     times: np.ndarray
     omegas: np.ndarray

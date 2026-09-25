@@ -52,7 +52,7 @@ def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_
     for i in range(n_plots):
         assert(len(omega_d_vals) == len(res_exc[i]))
         assert(len(tlist) == len(res_exc[i][0]))
-    
+
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots,6), gridspec_kw=gridspec)
 
@@ -62,7 +62,7 @@ def plot_exc_map(res_exc, omega_d_vals, tlist, labels, save=True, filename="exc_
 
     # plot
     images = []
-    
+
     for i in range(n_plots):
         images.append(ax[i].imshow(np.transpose(res_exc[i]),
                      extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
@@ -106,7 +106,7 @@ def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map
     for i in range(n_plots):
         assert(len(omega_d_vals) == len(res_sp[i]))
         assert(len(tlist) == len(res_sp[i][0]))
-    
+
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots,6), gridspec_kw=gridspec)
 
@@ -116,7 +116,7 @@ def plot_sp_map(res_sp, omega_d_vals, tlist, labels, save=True, filename="sp_map
 
     # plot
     images = []
-    
+
     for i in range(n_plots):
         images.append(ax[i].imshow(np.transpose(np.abs(res_sp[i])),
                      extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
@@ -160,7 +160,7 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
 
     assert(len(res_exc) == len(labels))
     assert(len(res_sp) == len(labels))
-    
+
     # check shape
     for i in range(len(res_exc)):
         assert(len(omega_d_vals) == len(res_exc[i]))
@@ -175,7 +175,7 @@ def plot_diff_map(res_exc, res_sp, omega_d_vals, tlist, labels, save=True, filen
             exc_diffs[r"$ \langle S_+S_- \rangle $ Difference " + f"({labels[i]} - {labels[j]})"] = np.subtract(res_exc[i], res_exc[j])
             sp_diffs[r"$ | \langle S_+ \rangle | $ Difference " + f"({labels[i]} - {labels[j]})"] = np.subtract(np.abs(res_sp[i]), np.abs(res_sp[j]))
             n_plots += 1
-    
+
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(2, n_plots + 1, figsize=(6*n_plots, 10), gridspec_kw=gridspec)
 
@@ -232,7 +232,7 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
     for i in range(n_plots):
         assert(len(omega_d_vals) == len(fft_data[i]))
         assert(len(fft_freqs[i]) == len(fft_freqs[0]))
-    
+
     gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(1, n_plots + 1, figsize=(6*n_plots, 6), gridspec_kw=gridspec)
 
@@ -242,7 +242,7 @@ def plot_fft_map(fft_freqs, fft_data, omega_d_vals, omega_tls, labels, save=True
 
     # plot
     images = []
-    
+
     for i in range(n_plots):
         images.append(ax[i].imshow(fft_data[i].T,
                       extent=[omega_d_vals[0], omega_d_vals[-1],
@@ -388,8 +388,8 @@ def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, f
     # check shape
     for i in range(n_plots):
         assert len(Qts[0]) == len(Qts[i])
-    
-    gridspec = {'width_ratios': [1] * n_plots + [0.1]} 
+
+    gridspec = {'width_ratios': [1] * n_plots + [0.1]}
     fig, ax = plt.subplots(1, n_plots + 1, figsize=(6 * n_plots, 4), gridspec_kw=gridspec)
 
     vmax = find_max(Qts)
@@ -400,7 +400,7 @@ def plot_husimi_anim(Qts, tlist, theta, phi, T_drive, labels, method, omega_d, f
     ax[0].set_ylabel(r"$\theta$")
     # add data
     images = []
-    
+
     for i in range(len(Qts)):
         ax[i].set_title(labels[i])
         ax[i].set_xlabel(r"$\phi$")
@@ -528,7 +528,7 @@ def plot_correlations(correlations, tlist, solver_name, corr_name, save=True, fi
         assert len(C_t) == len(tlist)
         ax.plot(tlist, C_t)
         lgd_strs.append(f"{label}")
-    
+
     ax.set_xlabel("Time [us]")
     ax.set_ylabel(f"{corr_name}")
     ax.set_title(f"{corr_name} Over Time ({solver_name})")
@@ -605,7 +605,7 @@ def plot_phase_corr_evolution(phases, correlations, corr_names, tlist, tls_freqs
         ax[i+1].legend(leg_strs)
         ax[i+1].set_ylim(y_limits[corr_names[i]])
     plt.suptitle(f"{solver_name} Phase Difference and TLS Correlations", y=0.99)
-    
+
     plt.tight_layout()
 
     if save:
@@ -630,7 +630,7 @@ def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, fil
     filename : str, optional
         The output filename (without extension) used when saving the figure.
     """
-    gridspec = {'width_ratios': [1, 0.1]} 
+    gridspec = {'width_ratios': [1, 0.1]}
     fig, ax = plt.subplots(1, 2, figsize=(6, 8), gridspec_kw=gridspec)
 
     assert len(corr_map) == len(J_list)
@@ -642,11 +642,11 @@ def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, fil
                     origin='lower', aspect='auto', cmap='inferno',
                     vmin=-1,
                     vmax=1)
-    
+
     ax[0].set_title(f"Correlation Sweep ({solver_name})")
     ax[0].set_xlabel(r"$ \omega_2 / \omega_1$")
     ax[0].set_ylabel("J")
-    
+
     # colorbar
     cb1 = fig.colorbar(im, cax=ax[1])
     cb1.set_label(r"$ C_{12} $", labelpad=14)
@@ -656,4 +656,108 @@ def plot_corr_J_sweep(corr_map, J_list, freq_ratios, solver_name, save=True, fil
     if save:
         os.makedirs("figs/correlation_plots/",exist_ok=True)
         plt.savefig(f"figs/correlation_plots/{filename}.png")
-    
+
+def plot_cavity_map(data, omega_d_vals, tlist, title, cbar_label,
+                    cmap="inferno", vmin=None, vmax=None, drive_off=None,
+                    save=True, filename="cavity_map"):
+    """Plot a drive-frequency vs time heatmap of a (real) cavity quantity.
+
+    Parameters
+    ----------
+    data : ndarray
+        Real 2D array indexed by drive frequency then time, shape
+        ``(len(omega_d_vals), len(tlist))``.
+    omega_d_vals : array_like
+        Drive frequencies (GHz) for the horizontal axis.
+    tlist : array_like
+        Time values (ns) for the vertical axis.
+    title : str
+        Axis title.
+    cbar_label : str
+        Colorbar label.
+    cmap : str, optional
+        Matplotlib colormap (default ``"inferno"``; use e.g. ``"twilight"`` with
+        ``vmin=-np.pi, vmax=np.pi`` for phases, ``"RdBu_r"`` for signed maps).
+    vmin, vmax : float, optional
+        Colour limits.
+    drive_off : float, optional
+        If given, draw a dashed horizontal line at this time marking drive
+        switch-off (time is the vertical axis).
+    save : bool, optional
+        Whether to save the figure under ``figs/cavity_figures`` (default True).
+    filename : str, optional
+        Output filename (without extension).
+    """
+    data = np.asarray(data)
+    assert len(omega_d_vals) == len(data)
+    assert len(tlist) == len(data[0])
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(np.transpose(data),
+                   extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+                   origin="lower", aspect="auto", cmap=cmap, vmin=vmin, vmax=vmax)
+    if drive_off is not None:
+        ax.hlines(drive_off, linestyle="--", linewidth=1.5, color="white")
+    ax.set_xlabel("Drive Frequency (GHz)")
+    ax.set_ylabel("Time (ns)")
+    ax.set_title(title)
+    fig.colorbar(im, ax=ax, label=cbar_label)
+    plt.tight_layout()
+
+    if save:
+        os.makedirs("figs/cavity_figures/", exist_ok=True)
+        plt.savefig(f"figs/cavity_figures/{filename}.png")
+
+def plot_cavity_iq(alpha, omega_d_vals, tlist,
+                   title=r"Drive-frame cavity quadratures",
+                   save=True, filename="cavity_iq"):
+    """Plot the in-phase (I) and quadrature (Q) parts of a complex cavity field
+    side by side (I and Q combined into one figure).
+
+    Parameters
+    ----------
+    alpha : ndarray
+        Complex cavity field indexed by drive frequency then time, shape
+        ``(len(omega_d_vals), len(tlist))``.
+    omega_d_vals : array_like
+        Drive frequencies (GHz) for the horizontal axis.
+    tlist : array_like
+        Time values (ns) for the vertical axis.
+    title : str, optional
+        Figure suptitle.
+    save : bool, optional
+        Whether to save the figure under ``figs/cavity_figures`` (default True).
+    filename : str, optional
+        Output filename (without extension).
+    """
+    alpha = np.asarray(alpha)
+    assert len(omega_d_vals) == len(alpha)
+    assert len(tlist) == len(alpha[0])
+
+    I = np.real(alpha)
+    Q = np.imag(alpha)
+    vmax = float(max(np.abs(I).max(), np.abs(Q).max()))
+    vmin = -vmax
+
+    gridspec = {"width_ratios": [1, 1, 0.1]}
+    fig, ax = plt.subplots(1, 3, figsize=(12, 6), gridspec_kw=gridspec)
+
+    images = []
+    for ax, quadrature, label in ((ax[0], I, r"$I=\mathrm{Re}(\alpha)$"),
+                                 (ax[1], Q, r"$Q=\mathrm{Im}(\alpha)$")):
+        images.append(ax.imshow(np.transpose(quadrature),
+                      extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
+                      origin="lower", aspect="auto", cmap="RdBu_r",
+                      vmin=vmin, vmax=vmax))
+        ax.set_title(label)
+        ax.set_xlabel("Drive Frequency (GHz)")
+        ax.set_ylabel("Time (ns)")
+
+    cb = fig.colorbar(images[-1], cax=ax[2])
+    cb.set_label(r"quadrature (arb.)", labelpad=14)
+    fig.suptitle(title)
+    plt.tight_layout()
+
+    if save:
+        os.makedirs("figs/cavity_figures/", exist_ok=True)
+        plt.savefig(f"figs/cavity_figures/{filename}.png")

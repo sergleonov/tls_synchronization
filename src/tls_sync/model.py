@@ -286,8 +286,8 @@ class TLSCavityModel(Model):
         Uniform TLS-cavity coupling.
     Nb : int
         Cavity Fock-space truncation.
-    kappa : float
-        Cavity decay rate; the thermal loss/gain ops are returned by
+    gamma : float
+        TLS decay rate; the thermal loss/gain ops are returned by
         ``build_dissipators`` when positive.
     n_tls : int
         Number of two-level systems.
@@ -303,9 +303,9 @@ class TLSCavityModel(Model):
                  omega_c: float = 4.0,
                  g: float = 0.02,
                  Nb: int = 10,
-                 kappa: float = 0.0,
-                 n_tls: int = 2,
-                 bath: Bath | None = None) -> None:
+                 gamma: float = 0.0,
+                 temperature: float = 0.0,
+                 n_tls: int = 2) -> None:
         self.n_tls = n_tls
         self.omega_tls = np.asarray(omega_tls, dtype=float)
         if len(self.omega_tls) != n_tls:
@@ -316,8 +316,8 @@ class TLSCavityModel(Model):
         self.omega_c = omega_c
         self.g = g
         self.Nb = Nb
-        self.kappa = kappa
-        self.bath = bath
+        self.gamma = gamma
+        self.temperature = temperature
 
     @property
     def subsystem_dims(self) -> list[int]:
@@ -372,7 +372,7 @@ class TLSCavityModel(Model):
 
         - TLS: weak-coupling thermal collapse ops rendered from ``self.bath`` (as
           in :class:`TLSChainModel`), on the embedded TLS operators.
-        - Cavity: ``sqrt(kappa (n_c+1)) a`` + ``sqrt(kappa n_c) a^dag`` with
+        - Cavity: ``sqrt(gamma (n_c+1)) a`` + ``sqrt(gamma n_c) a^dag`` with
           ``n_c`` the Bose occupation at ``omega_c`` and the shared environment
           temperature (pure loss when there is no bath or ``T <= 0``).
 
@@ -381,23 +381,18 @@ class TLSCavityModel(Model):
         treated as zero-temperature (its thermal-gain operator is omitted).
         """
         c_ops: list[Any] = []
-        if self.bath is None:
+        if self.temperature == 0.0:
             warnings.warn(
                 f"{type(self).__name__} has no bath: the TLS get no thermal "
                 "dissipation, and any cavity loss is treated as zero-temperature "
                 "(thermal-gain operator omitted). Attach a Bath for an open system.",
                 stacklevel=2,
             )
-        else:
-            c_ops += _tls_thermal_collapse_ops(ops.sm, ops.sp, self.omega_tls,
-                                           self.bath.coupling, self.bath.temperature)
-        if self.kappa > 0.0:
-            a = ops.aux["a"]
-            T = self.bath.temperature if self.bath is not None else 0.0
-            n_c = _bose(self.omega_c, T)
-            c_ops.append(float(np.sqrt(self.kappa * (n_c + 1.0))) * a)
-            if n_c > 0.0:
-                c_ops.append(float(np.sqrt(self.kappa * n_c)) * backend.dag(a))
+        c_ops += _tls_thermal_collapse_ops(ops.sm, ops.sp, self.omega_tls,
+                                           self.gamma, self.temperature)
+        a = ops.aux["a"]
+        c_ops += _tls_thermal_collapse_ops(a, backend.dag(a), self.omega_tls,
+                                           self.gamma, self.temperature)
         return c_ops
 
     def initial_state(self, backend: Backend, ops: Operators) -> Any:
@@ -467,7 +462,7 @@ class SemiclassicalCavityModel(TLSChainModel):
     eta : float
         Direct cavity-drive amplitude.
     gamma : float
-        Phenomenological TLS relaxation rate (T=0 spontaneous emission);
+        Phenomenological TLS relaxation rate (spontaneous emission);
         ``sqrt(gamma) sm_i`` per TLS. Passed here, not on the :class:`Bath`,
         because a fixed rate has no spectral density for HEOM/TEMPO to render.
     gamma_phi : float
