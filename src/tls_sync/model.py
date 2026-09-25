@@ -236,7 +236,7 @@ class TLSChainModel(Model):
     def bath_coupling_op(self, ops: Operators) -> Any:
         """System operator the bath couples to (collective sx here)."""
         return sum(ops.sx)
-    
+
 
 
 class TLSCavityModel(Model):
@@ -473,7 +473,7 @@ class SemiclassicalCavityModel(TLSChainModel):
     gamma_phi : float
         Phenomenological TLS pure-dephasing rate; ``sqrt(gamma_phi/2) sz_i``.
 
-    Note: compared to Salil's code, this model assumes uniform TLS-cavity coupling ``g``, 
+    Note: compared to Salil's code, this model assumes uniform TLS-cavity coupling ``g``,
     unifrom TLS-TLS interaction ``J``, unifrom decay rates ``gamma`` and ``gamma_phi`` for TLS
     """
 
@@ -488,14 +488,15 @@ class SemiclassicalCavityModel(TLSChainModel):
                  eta: float = 0.0,
                  gamma: float = 0.0,
                  gamma_phi: float = 0.0,
-                 n_tls: int = 2,
-                 bath: Bath | None = None) -> None:
+                 temperature: float = 0.0,
+                 n_tls: int = 2) -> None:
         super().__init__(omega_tls=omega_tls, J=J, Omega_amp=Omega_amp,
-                         T_drive=T_drive, n_tls=n_tls, bath=bath)
+                         T_drive=T_drive, n_tls=n_tls, bath=None)
         self.omega_c = omega_c
         self.g = g
         self.kappa = kappa
         self.eta = eta
+        self.temperature = temperature
         self.gamma = gamma
         self.gamma_phi = gamma_phi
 
@@ -513,11 +514,13 @@ class SemiclassicalCavityModel(TLSChainModel):
         normal case. The classical cavity damping ``kappa`` enters the mean-field
         ``alpha`` equation of motion in the solver, not as a collapse operator.
         """
-        #NOTE: do we need to add temperature dependence to the TLS relaxation?
         c_ops: list[Any] = []
+        # add dephasing
         for i in range(self.n_tls):
-            if self.gamma > 0.0:
-                c_ops.append(float(np.sqrt(self.gamma)) * ops.sm[i])
             if self.gamma_phi > 0.0:
                 c_ops.append(float(np.sqrt(self.gamma_phi / 2.0)) * ops.sz[i])
+        # add thermal collapse ops
+        if self.gamma > 0.0:
+            # extending w/+= as function returns a list of ops
+            c_ops += _tls_thermal_collapse_ops(ops.sm, ops.sp, self.omega_tls, self.gamma, self.temperature)
         return c_ops
