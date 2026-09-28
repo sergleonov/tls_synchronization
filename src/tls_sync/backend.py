@@ -37,6 +37,10 @@ class Backend(ABC):
     def dag(self, op: Any) -> Any:
         """Hermitian conjugate."""
 
+    @abstractmethod
+    def fock(self, N: int, n: int) -> Any:
+        """Fock state with size N and fock number n."""
+
     # --- analysis primitives (used by Dynamics / correlations) -------------- #
     @abstractmethod
     def expect(self, op: Any, state: Any) -> complex:
@@ -108,6 +112,9 @@ class QutipBackend(Backend):
     def dag(self, op: Any) -> Any:
         return op.dag()
 
+    def fock(self, N: int, n: int) -> Any:
+        return qt.basis(N, n)
+
     def expect(self, op: Any, state: Any) -> complex:
         # qt.expect returns a real float for Hermitian ops; complex() is safe either way.
         return complex(qt.expect(op, state))
@@ -167,6 +174,11 @@ class NumpyBackend(Backend):
 
     def dag(self, op: Any) -> Any:
         return np.asarray(op).conj().T
+
+    def fock(self, N: int, n: int) -> Any:
+        zeros = np.zeros(N, dtype=np.complex)
+        zeros[n] = 1
+        return zeros
 
     def expect(self, op: Any, state: Any) -> Any:
         op = np.asarray(op)

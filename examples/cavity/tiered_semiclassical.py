@@ -82,12 +82,11 @@ def main():
     e_ops_semi = [semi.ops.collective_exc, semi.ops.collective_sp]
 
     # run sweeps
-    tiered_res = markov.single_run(omegas, e_ops=e_ops_tier)
-    semi_res = semi.single_run(omegas, e_ops=e_ops_semi)
+    tiered_res = markov.sweep(omegas, e_ops=e_ops_tier)
+    semi_res = semi.sweep(omegas, e_ops=e_ops_semi)
 
     # check the output time match
-    tlist = markov.times
-    assert np.allclose(tlist, semi.times), "solvers must share the output time grid"
+    assert np.allclose(markov.times, semi.times), "solvers must share the output time grid"
 
     # tiered res
     tier_exc = tiered_res.expectations[0].real

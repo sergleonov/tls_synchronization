@@ -391,7 +391,7 @@ class TLSCavityModel(Model):
         c_ops += _tls_thermal_collapse_ops(ops.sm, ops.sp, self.omega_tls,
                                            self.gamma, self.temperature)
         a = ops.aux["a"]
-        c_ops += _tls_thermal_collapse_ops(a, backend.dag(a), self.omega_tls,
+        c_ops += _tls_thermal_collapse_ops([a], [backend.dag(a)], self.omega_tls,
                                            self.gamma, self.temperature)
         return c_ops
 
@@ -423,14 +423,8 @@ class TLSCavityModel(Model):
         ``prod_{k>=1} (k I - N) / k`` (which is 1 on the ``N = 0`` eigenstate and
         0 elsewhere), since the Backend ABC exposes no Fock/basis primitive.
         """
-        #TODO: verify this logic
-        a = backend.destroy(self.Nb)
-        N = backend.mul(backend.dag(a), a)
-        I_cav = backend.identity(self.Nb)
-        proj = I_cav
-        for k in range(1, self.Nb):
-            proj = backend.mul(proj, (k * I_cav - N) * (1.0 / k))
-        return proj
+        ket = backend.fock(self.Nb, 0)
+        return backend.mul(ket, backend.dag(ket))
 
 
 class SemiclassicalCavityModel(TLSChainModel):

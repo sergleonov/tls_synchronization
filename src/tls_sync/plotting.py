@@ -697,7 +697,7 @@ def plot_cavity_map(data, omega_d_vals, tlist, title, cbar_label,
                    extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                    origin="lower", aspect="auto", cmap=cmap, vmin=vmin, vmax=vmax)
     if drive_off is not None:
-        ax.hlines(drive_off, linestyle="--", linewidth=1.5, color="white")
+        ax.hlines(drive_off, xmin=omega_d_vals[0], xmax=omega_d_vals[-1], linestyle="--", linewidth=1.5, color="white")
     ax.set_xlabel("Drive Frequency (GHz)")
     ax.set_ylabel("Time (ns)")
     ax.set_title(title)
@@ -740,11 +740,11 @@ def plot_cavity_iq(alpha, omega_d_vals, tlist,
     vmin = -vmax
 
     gridspec = {"width_ratios": [1, 1, 0.1]}
-    fig, ax = plt.subplots(1, 3, figsize=(12, 6), gridspec_kw=gridspec)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 6), gridspec_kw=gridspec)
 
     images = []
-    for ax, quadrature, label in ((ax[0], I, r"$I=\mathrm{Re}(\alpha)$"),
-                                 (ax[1], Q, r"$Q=\mathrm{Im}(\alpha)$")):
+    for ax, quadrature, label in ((axes[0], I, r"$I=\mathrm{Re}(\alpha)$"),
+                                 (axes[1], Q, r"$Q=\mathrm{Im}(\alpha)$")):
         images.append(ax.imshow(np.transpose(quadrature),
                       extent=[omega_d_vals[0], omega_d_vals[-1], tlist[0], tlist[-1]],
                       origin="lower", aspect="auto", cmap="RdBu_r",
@@ -753,7 +753,7 @@ def plot_cavity_iq(alpha, omega_d_vals, tlist,
         ax.set_xlabel("Drive Frequency (GHz)")
         ax.set_ylabel("Time (ns)")
 
-    cb = fig.colorbar(images[-1], cax=ax[2])
+    cb = fig.colorbar(images[-1], cax=axes[2])
     cb.set_label(r"quadrature (arb.)", labelpad=14)
     fig.suptitle(title)
     plt.tight_layout()
