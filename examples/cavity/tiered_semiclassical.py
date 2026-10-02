@@ -30,14 +30,14 @@ def main():
     Omega_amp = 0.1
     g = 0.02
     T = 0.5
-    T_drive = 10.0
+    T_drive = 100.0
     n_tls = len(tls_freqs)
     omega_c = float(np.mean(tls_freqs))
     dissipation = 0.002
 
     # solver params
     n_freqs = 300
-    T_total = 100
+    T_total = 1000
     dt = 0.1
 
     # init tiered
@@ -86,7 +86,8 @@ def main():
     semi_res = semi.sweep(omegas, e_ops=e_ops_semi)
 
     # check the output time match
-    assert np.allclose(markov.times, semi.times), "solvers must share the output time grid"
+    tlist = markov.times
+    assert np.allclose(tlist, semi.times), "solvers must share the output time grid"
 
     # tiered res
     tier_exc = tiered_res.expectations[0].real
