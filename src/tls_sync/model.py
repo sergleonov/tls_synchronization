@@ -217,12 +217,9 @@ class TLSChainModel(Model):
                                      self.bath.coupling, self.bath.temperature)
 
     def initial_state(self, backend: Backend, ops: Operators) -> Any:
-        # product ground state; for +0.5*omega*sz the lower level is (0, 1),
-        # whose projector is 0.5*(I - sz)
-        #TODO: verify this
-        I2 = backend.identity(2)
-        ground_proj = 0.5 * (I2 - backend.sigma("z"))
-        return backend.tensor([ground_proj] * self.n_tls)
+        ket = backend.fock(2, 0)
+        ket2dm = backend.mul(ket, backend.dag(ket))
+        return backend.tensor([ket2dm] * self.n_tls)
 
     def drive(self, ops: Operators) -> Drive:
         drive_op = sum(ops.sx)
@@ -396,11 +393,10 @@ class TLSCavityModel(Model):
         return c_ops
 
     def initial_state(self, backend: Backend, ops: Operators) -> Any:
-        """Product TLS ground state ``|1...1>`` tensored with the cavity vacuum."""
-        #TODO: verify this logic
-        I2 = backend.identity(2)
-        ground = 0.5 * (I2 - backend.sigma("z"))          # |1><1| per TLS
-        return backend.tensor([ground] * self.n_tls + [self._cavity_vacuum(backend)])
+        """Product TLS ground state ``|0...0>`` tensored with the cavity vacuum."""
+        ket = backend.fock(2, 0)
+        ket2dm = backend.mul(ket, backend.dag(ket))
+        return backend.tensor([ket2dm] * self.n_tls + [self._cavity_vacuum(backend)])
 
     def drive(self, ops: Operators) -> Drive:
         """Collective TLS drive coupling to ``sum_i sx_i``."""
