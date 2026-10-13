@@ -2,7 +2,7 @@ from qutip import Bloch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tls_sync import HeomSolver, MarkovianSolver, SemiclassicalSolver
+from tls_sync import HeomSolver, MarkovianSolver, SemiclassicalSolver, TempoSolver
 from tls_sync.model import TLSChainModel, Bath, TLSCavityModel, SemiclassicalCavityModel
 
 # -----------------Plotting the Bloch sphere-----------------
@@ -61,7 +61,8 @@ def main():
     dissipation = 0.002
 
     bath = Bath(
-        sd_type="drude",
+        sd_type="power",
+        ohmicity=1.0,
         coupling=lam,
         cutoff=cutoff,
         temperature=T
@@ -106,22 +107,25 @@ def main():
 
     # build solvers
     markov = MarkovianSolver(model, T_total=T_total, dt=dt)
+    tempo = TempoSolver(model, T_total=T_total, dt=dt, tcut=2.5, epsrel=1e-4)
     heom = HeomSolver(model, T_total=T_total, dt=dt, Nk=6)
     tiered = MarkovianSolver(tiered_model, T_total=T_total, dt=dt)
     semi = SemiclassicalSolver(semiclassical_model, T_total=T_total, dt=dt/10.0, dt_output=dt)
 
     # expectation operators (identical for both)
     e_ops = [sum(markov.ops.sx), sum(markov.ops.sy),sum(markov.ops.sz)]
+    e_ops_tempo = [sum(tempo.ops.sx), sum(tempo.ops.sy),sum(tempo.ops.sz)]
     e_ops_tier = [sum(tiered.ops.sx), sum(tiered.ops.sy),sum(tiered.ops.sz)]
     e_ops_semi = [sum(semi.ops.sx), sum(semi.ops.sy),sum(semi.ops.sz)]
 
     # run dynamics
     markov_res = markov.single_run(omegad, e_ops=e_ops)
-    heom_res = heom.single_run(omegad, e_ops=e_ops)
-    tiered_res = tiered.single_run(omegad, e_ops=e_ops_tier)
-    semi_res = semi.single_run(omegad, e_ops=e_ops_semi)
+    tempo_res = tempo.single_run(omegad, e_ops=e_ops_tempo)
+    # heom_res = heom.single_run(omegad, e_ops=e_ops)
+    # tiered_res = tiered.single_run(omegad, e_ops=e_ops_tier)
+    # semi_res = semi.single_run(omegad, e_ops=e_ops_semi)
 
-    plot_bloch_sphere([markov_res, semi_res], tmax=T_total, labels=["Markovian", "Semiclassical"])
+    plot_bloch_sphere([markov_res, tempo_res], tmax=T_total, labels=["Markovian", "TEMPO"])
     plt.tight_layout()
     plt.savefig("figs/cycle_figures/bloch.png")
 
