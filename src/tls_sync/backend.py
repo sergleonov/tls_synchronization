@@ -176,8 +176,8 @@ class NumpyBackend(Backend):
         return np.asarray(op).conj().T
 
     def fock(self, N: int, n: int) -> Any:
-        zeros = np.zeros(N, dtype=np.complex)
-        zeros[n] = 1
+        zeros = [[0.0]] * N
+        zeros[n] = [1.0]
         return zeros
 
     def expect(self, op: Any, state: Any) -> Any:

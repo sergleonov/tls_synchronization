@@ -2,8 +2,8 @@
 
 The cavity is a *classical* complex amplitude ``alpha`` evolved alongside the TLS
 density matrix ``rho`` -- a mean-field Maxwell-Bloch system -- integrated with a
-fixed-step, batched RK4 over the whole drive-frequency sweep at once 
-(original physics from Salil Bedkihal); see :class:`~tls_sync.model.SemiclassicalCavityModel` 
+fixed-step, batched RK4 over the whole drive-frequency sweep at once
+(original physics from Salil Bedkihal); see :class:`~tls_sync.model.SemiclassicalCavityModel`
 for the parameters.
 
 Unlike the Lindblad solvers, a single frequency is not the natural unit here --
