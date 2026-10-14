@@ -1,56 +1,24 @@
-from qutip import Bloch
 import numpy as np
 import matplotlib.pyplot as plt
 
 from tls_sync import HeomSolver, MarkovianSolver, SemiclassicalSolver, TempoSolver
 from tls_sync.model import TLSChainModel, Bath, TLSCavityModel, SemiclassicalCavityModel
-
-# -----------------Plotting the Bloch sphere-----------------
-def plot_bloch_sphere(results, tmax, labels):
-
-    # plot two bloch spheres
-    fig = plt.figure(figsize=(12, 6))
-    axs = [fig.add_subplot(121, projection='3d'), fig.add_subplot(122, projection='3d')]
-
-    fig.suptitle("TLS Dynamics on the Bloch Sphere", fontsize=16)
-
-    for idx, result in enumerate(results):
-        # extract data
-        xs = result.expectations[0][0]
-        ys = result.expectations[1][0]
-        zs = result.expectations[2][0]
-        t = result.times
-
-        b = Bloch(fig, axs[idx])
-        b.view = [-45, 30]
-        cmap = plt.get_cmap('inferno')  # choose a colormap
-        colors = cmap(np.divide(t, tmax))  # normalize time to [0, 1] for color mapping
-
-        for i in range(len(xs) - 1):
-            segment = [[xs[i], xs[i+1]],
-                    [ys[i], ys[i+1]],
-                    [zs[i], zs[i+1]]]
-            b.add_points(segment, meth='l') # 'l' tells QuTiP to render as a line
-        colors[0] = [0, 0.5, 1, 1] # color first point differently for better visibility
-        b.point_color = colors
-        b.render()
-
-        axs[idx].set_title(labels[idx], fontsize=14)
+from tls_sync.plotting import plot_bloch_sphere
 
 def main():
     # model params
-    tls_freq = [3.75]  # GHZ frequency of the bath modes (normalized)
-    Omega_amp = 20*tls_freq[0]  # GHz frequency of the driving field
-    T_drive = 30/tls_freq[0]
+    tls_freq = [1.0]  # GHZ frequency of the bath modes (normalized)
+    Omega_amp = 60*tls_freq[0]  # GHz frequency of the driving field
+    T_drive = 3.0
 
     # bath params
     cutoff = tls_freq[0] # GHz cut off frequency
-    lam = 1.0  # coupling strength
+    lam = tls_freq[0]  # coupling strength
     T = 0.5  # K temperature
 
     # solver params
     T_total = T_drive
-    dt = T_drive / 1e4
+    dt = T_drive / 1e3
 
     omegad = Omega_amp/2.4048  # GHz frequency of the driving field (resonant)
 
@@ -61,8 +29,8 @@ def main():
     dissipation = 0.002
 
     bath = Bath(
-        sd_type="power",
-        ohmicity=1.0,
+        sd_type="drude",
+        # ohmicity=3.0,
         coupling=lam,
         cutoff=cutoff,
         temperature=T
@@ -108,7 +76,7 @@ def main():
     # build solvers
     markov = MarkovianSolver(model, T_total=T_total, dt=dt)
     tempo = TempoSolver(model, T_total=T_total, dt=dt, tcut=2.5, epsrel=1e-4)
-    heom = HeomSolver(model, T_total=T_total, dt=dt, Nk=6)
+    heom = HeomSolver(model, T_total=T_total, dt=dt, Nk=3)
     tiered = MarkovianSolver(tiered_model, T_total=T_total, dt=dt)
     semi = SemiclassicalSolver(semiclassical_model, T_total=T_total, dt=dt/10.0, dt_output=dt)
 
@@ -118,16 +86,30 @@ def main():
     e_ops_tier = [sum(tiered.ops.sx), sum(tiered.ops.sy),sum(tiered.ops.sz)]
     e_ops_semi = [sum(semi.ops.sx), sum(semi.ops.sy),sum(semi.ops.sz)]
 
-    # run dynamics
-    markov_res = markov.single_run(omegad, e_ops=e_ops)
-    tempo_res = tempo.single_run(omegad, e_ops=e_ops_tempo)
-    # heom_res = heom.single_run(omegad, e_ops=e_ops)
-    # tiered_res = tiered.single_run(omegad, e_ops=e_ops_tier)
-    # semi_res = semi.single_run(omegad, e_ops=e_ops_semi)
+    import qutip as qt
+    psis = [
+        (qt.basis(2,1)+qt.basis(2,0)).unit(),
+        (qt.basis(2,1)+2.*qt.basis(2,0)).unit(),
+        (2.*qt.basis(2,1)+qt.basis(2,0)).unit(),
+        ((2j+.3)*qt.basis(2,1) + np.sqrt(2*2 + .3*.3)*qt.basis(2,0)).unit(),
+        ((2j+.3)*qt.basis(2,0) + np.sqrt(2*2 + .3*.3)*qt.basis(2,1)).unit()
+    ]
+    fig, axs= None, None
 
-    plot_bloch_sphere([markov_res, tempo_res], tmax=T_total, labels=["Markovian", "TEMPO"])
+    for psi in psis:
+        # psi = qt.tensor(psi, qt.basis(10,0))
+        rho0 = qt.ket2dm(psi)
+        # run dynamics
+        # markov_res = markov.single_run(omegad, rho0=rho0, e_ops=e_ops)
+        # tempo_res = tempo.single_run(omegad, rho0=rho0.full(), e_ops=e_ops_tempo)
+        heom_res = heom.single_run(omegad, rho0=rho0, e_ops=e_ops)
+        # tiered_res = tiered.single_run(omegad, rho0=rho0, e_ops=e_ops_tier)
+        # semi_res = semi.single_run(omegad, rho0=rho0.full(), e_ops=e_ops_semi)
+
+        fig, axs = plot_bloch_sphere([heom_res], title="HEOM (Drude) Varying Initial State Dynamics", tmax=T_total, fig=fig, axs=axs)
+
     plt.tight_layout()
-    plt.savefig("figs/cycle_figures/bloch.png")
+    plt.savefig("figs/cycle_figures/bloch_initial_states_heom_drude.png", dpi=300)
 
 
 if __name__ == "__main__":

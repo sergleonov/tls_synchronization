@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import matplotlib.animation as anim
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from .utils import find_max, find_min
 import numpy as np
 import os
@@ -761,3 +762,57 @@ def plot_cavity_iq(alpha, omega_d_vals, tlist,
     if save:
         os.makedirs("figs/cavity_figures/", exist_ok=True)
         plt.savefig(f"figs/cavity_figures/{filename}.png")
+
+
+def draw_sphere(ax, color='gray', alpha=0.1):
+    u, v = np.mgrid[0:2*np.pi:50j, 0:np.pi:50j]
+    xs = np.cos(u)*np.sin(v)
+    ys = np.sin(u)*np.sin(v)
+    zs = np.cos(v)
+    ax.plot_surface(xs, ys, zs, color=color, alpha=alpha, linewidth=0)
+
+def plot_trajectory(ax, x, y, z, t, tmax, cmap='hot'):
+    # gradient line coloured by time
+    pts = np.array([x, y, z]).T.reshape(-1, 1, 3)
+    segs = np.concatenate([pts[:-1], pts[1:]], axis=1)
+    lc = Line3DCollection(segs, cmap=cmap, norm=plt.Normalize(0, tmax), linewidth=1.2)
+    lc.set_array(t[:-1])
+    ax.add_collection3d(lc)
+    ax.scatter(x[0], y[0], z[0], color='black', s=30, zorder=5)  # start point
+
+def plot_bloch_sphere(results, tmax, labels=None, title="TLS Dynamics on the Bloch Sphere", fig=None, axs=None):
+    """This function is adapted from Federic Settimo's code provided with the synchronization paper (ref 47)
+    Settimo and Vacchini, "Synchronization effects in a periodically driven two-level system" 022213"""
+    n = len(results)
+    if fig is None:
+        fig = plt.figure(figsize=(6 * n, 6))
+    if axs is None:
+        axs = [fig.add_subplot(1, n, i+1, projection='3d') for i in range(n)]
+
+    fig.suptitle(title, fontsize=16)
+
+    for idx, result in enumerate(results):
+        x = np.real(result.expectations[0][0])
+        y = np.real(result.expectations[1][0])
+        z = np.real(result.expectations[2][0])
+        t = np.real(result.times)
+        ax = axs[idx]
+
+        draw_sphere(ax, alpha=0.025)
+        plot_trajectory(ax, x, y, z, t, tmax)
+
+        # format plots
+        ax.set_xlim(-1, 1); ax.set_ylim(-1, 1); ax.set_zlim(-1, 1)
+        ax.set_box_aspect((1, 1, 1))
+        ax.set_xlabel('x'); ax.set_ylabel('y'); ax.set_zlabel('z')
+        ticks = np.linspace(-0.75, 0.75, 7)
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+        ax.set_zticks(ticks)
+        ax.tick_params(axis='x', pad=-2)
+        ax.tick_params(axis='y', pad=-2)
+        ax.tick_params(axis='z', pad=3)
+        ax.view_init(elev=ax.elev, azim=-45)
+        if labels:
+            ax.set_title(labels[idx], fontsize=14)
+    return fig, axs
