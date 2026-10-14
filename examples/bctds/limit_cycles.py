@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import qutip as qt
 
 from tls_sync import HeomSolver, MarkovianSolver, SemiclassicalSolver, TempoSolver
 from tls_sync.model import TLSChainModel, Bath, TLSCavityModel, SemiclassicalCavityModel
@@ -86,7 +87,6 @@ def main():
     e_ops_tier = [sum(tiered.ops.sx), sum(tiered.ops.sy),sum(tiered.ops.sz)]
     e_ops_semi = [sum(semi.ops.sx), sum(semi.ops.sy),sum(semi.ops.sz)]
 
-    import qutip as qt
     psis = [
         (qt.basis(2,1)+qt.basis(2,0)).unit(),
         (qt.basis(2,1)+2.*qt.basis(2,0)).unit(),
