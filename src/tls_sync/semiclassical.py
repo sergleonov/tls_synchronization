@@ -193,7 +193,7 @@ class SemiclassicalSolver(Solver):
 
     def single_run(self, omega_d, *, rho0=None, e_ops=None, store_states=True) -> Dynamics:
         """Integrate one drive frequency; the cavity field is in ``extra['alpha']``."""
-        return self._run_batch(np.array([omega_d], rho0, dtype=float), e_ops, store_states)
+        return self._run_batch(np.array([omega_d], dtype=float), rho0, e_ops, store_states)
 
     def sweep(self, omega_d_vals, *, rho0=None, e_ops=None, max_workers=None) -> Dynamics:
         """Integrate the whole drive-frequency batch at once (vectorized RK4).
