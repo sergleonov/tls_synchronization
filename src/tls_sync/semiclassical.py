@@ -123,19 +123,22 @@ class SemiclassicalSolver(Solver):
                            - 0.5 * (np.matmul(CdC[None], rho) + np.matmul(rho, CdC[None])))
         return dalpha, drho
 
-    def _run_batch(self, omega_d_vals, e_ops, store_states) -> Dynamics:
+    def _run_batch(self, omega_d_vals, rho0, e_ops, store_states) -> Dynamics:
         """Vectorized fixed-step RK4 over the frequency batch -> a Dynamics.
 
         Shared by ``single_run`` and ``sweep``. TLS observables (``e_ops``) are
         read off ``rho`` at each output step; the classical cavity amplitude is
         returned in ``extra['alpha']`` with shape ``(n_omega, n_time)``.
         """
+        if rho0 is None: # init at ground state by default
+            rho0 = self.model.initial_state(self.backend, self.ops)
+
         omega_d_vals = np.asarray(omega_d_vals, dtype=float)
         e_ops = list(e_ops) if e_ops is not None else self._default_e_ops()
         triples = self._prepare()
 
         nf = len(omega_d_vals)
-        d = self.rho0.shape[0]
+        d = rho0.shape[0]
         Sx = sum(self.ops.sx)
         dt = self.dt
         n_steps = int(round(self.T_total / dt))
@@ -143,7 +146,7 @@ class SemiclassicalSolver(Solver):
         n_out = len(self.times)
 
         alpha = np.zeros(nf, dtype=complex)
-        rho = np.broadcast_to(np.asarray(self.rho0, dtype=complex), (nf, d, d)).copy()
+        rho = np.broadcast_to(np.asarray(rho0, dtype=complex), (nf, d, d)).copy()
 
         alpha_out = np.zeros((nf, n_out), dtype=complex)
         expect_out = np.zeros((len(e_ops), nf, n_out), dtype=complex)
@@ -188,11 +191,11 @@ class SemiclassicalSolver(Solver):
             "SemiclassicalSolver integrates all drive frequencies in one batched "
             "RK4; use single_run() or sweep(), not _run_one().")
 
-    def single_run(self, omega_d, *, e_ops=None, store_states=True) -> Dynamics:
+    def single_run(self, omega_d, *, rho0=None, e_ops=None, store_states=True) -> Dynamics:
         """Integrate one drive frequency; the cavity field is in ``extra['alpha']``."""
-        return self._run_batch(np.array([omega_d], dtype=float), e_ops, store_states)
+        return self._run_batch(np.array([omega_d], rho0, dtype=float), e_ops, store_states)
 
-    def sweep(self, omega_d_vals, *, e_ops=None, max_workers=None) -> Dynamics:
+    def sweep(self, omega_d_vals, *, rho0=None, e_ops=None, max_workers=None) -> Dynamics:
         """Integrate the whole drive-frequency batch at once (vectorized RK4).
 
         Overrides the base parallel sweep: the RK4 is already vectorized over
@@ -200,4 +203,4 @@ class SemiclassicalSolver(Solver):
         cavity amplitude is returned in ``Dynamics.extra['alpha']``
         (``(n_omega, n_time)``); states are not stored (use ``single_run``).
         """
-        return self._run_batch(omega_d_vals, e_ops, store_states=False)
+        return self._run_batch(omega_d_vals, rho0, e_ops, store_states=False)

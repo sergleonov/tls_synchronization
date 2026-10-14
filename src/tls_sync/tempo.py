@@ -82,6 +82,9 @@ class TempoSolver(Solver):
         if requested, states) are read off the oqupy ``Dynamics`` object, whose
         time grid already matches ``self.times``.
         """
+        if rho0 is None: # init at ground state by default
+            rho0 = self.model.initial_state(self.backend, self.ops)
+
         drive = self.model.drive(self.ops)
 
         def ham(t):
@@ -90,7 +93,7 @@ class TempoSolver(Solver):
         system = oqupy.TimeDependentSystem(ham)
         dynamics = oqupy.compute_dynamics(
             process_tensor=prepared, system=system,
-            initial_state=self.rho0, start_time=0.0, progress_type="silent")
+            initial_state=rho0, start_time=0.0, progress_type="silent")
 
         expect = [np.asarray(dynamics.expectations(np.asarray(op), real=False)[1])
                   for op in e_ops]

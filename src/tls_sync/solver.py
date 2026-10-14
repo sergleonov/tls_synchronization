@@ -42,7 +42,7 @@ class Solver(ABC):
         # gets operators, static Hamiltonian, and initial state for free.
         self.ops = self.model.build_operators(self.backend)
         self.H = self.model.build_hamiltonian(self.backend, self.ops)
-        self.rho0 = self.model.initial_state(self.backend, self.ops)
+        # self.rho0 = self.model.initial_state(self.backend, self.ops)
 
     def _require_bath(self):
         """Return the model's bath, or raise if it is missing / unsupported.
@@ -70,7 +70,7 @@ class Solver(ABC):
         """
 
     @abstractmethod
-    def _run_one(self, omega_d, prepared, e_ops, store_states) -> tuple[list[np.ndarray], list[Any] | None]:
+    def _run_one(self, omega_d, rho0, prepared, e_ops, store_states) -> tuple[list[np.ndarray], list[Any] | None]:
         """Integrate ONE drive frequency (the per-solver primitive).
 
         Returns ``(expect, states)`` where ``expect[j]`` is the time series for
@@ -103,13 +103,13 @@ class Solver(ABC):
                         omegas=np.asarray(omegas, dtype=float),
                         expectations=expectations, states=states, extra=None)
 
-    def single_run(self, omega_d, *, e_ops=None, store_states=True) -> Dynamics:
+    def single_run(self, omega_d, *, rho0=None, e_ops=None, store_states=True) -> Dynamics:
         """Run a single drive frequency, returning states and expectations."""
         e_ops = list(e_ops) if e_ops is not None else self._default_e_ops()
-        result = self._run_one(omega_d, self._prepare(), e_ops, store_states)
+        result = self._run_one(omega_d, rho0, self._prepare(), e_ops, store_states)
         return self._collect([omega_d], [result], store_states)
 
-    def sweep(self, omega_d_vals, *, e_ops=None, max_workers=None) -> Dynamics:
+    def sweep(self, omega_d_vals, *, rho0=None, e_ops=None, max_workers=None) -> Dynamics:
         """Run the drive-frequency sweep in parallel, storing expectations only.
 
         Each frequency is an independent `_run_one` dispatched to a worker
@@ -119,7 +119,7 @@ class Solver(ABC):
         """
         omega_d_vals = np.asarray(omega_d_vals, dtype=float)
         e_ops = list(e_ops) if e_ops is not None else self._default_e_ops()
-        worker = partial(self._run_one, prepared=self._prepare(),
+        worker = partial(self._run_one, rho0=rho0, prepared=self._prepare(),
                          e_ops=e_ops, store_states=False)
         if max_workers is None:
             max_workers = max(1, multiprocessing.cpu_count() - 1)

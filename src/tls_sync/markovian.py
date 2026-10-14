@@ -42,13 +42,15 @@ class MarkovianSolver(Solver):
         """
         return self.model.build_dissipators(self.backend, self.ops)
 
-    def _run_one(self, omega_d, prepared, e_ops, store_states) -> tuple[list[np.ndarray], list[Any] | None]:
+    def _run_one(self, omega_d, rho0, prepared, e_ops, store_states) -> tuple[list[np.ndarray], list[Any] | None]:
         """Integrate one drive frequency with mesolve (runs in a worker process).
 
         `prepared` is the collapse-operator list from `_prepare`. The drive
         coefficient closure is rebuilt here so nothing unpicklable crosses the
         process boundary.
         """
+        if rho0 is None: # init at ground state by default
+            rho0 = self.model.initial_state(self.backend, self.ops)
 
         drive = self.model.drive(self.ops)
 
@@ -57,7 +59,7 @@ class MarkovianSolver(Solver):
 
         H = qt.QobjEvo([self.H, [drive.operator, coeff]], args={"omega": omega_d})
         result = qt.mesolve(
-            H, self.rho0, self.times, c_ops=prepared, e_ops=list(e_ops),
+            H, rho0, self.times, c_ops=prepared, e_ops=list(e_ops),
             options={"nsteps": self.nsteps, "progress_bar": "",
                      "store_states": store_states},
         )

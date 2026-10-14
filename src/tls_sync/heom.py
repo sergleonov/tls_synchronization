@@ -150,6 +150,9 @@ class HeomSolver(Solver):
         object and the drive-coefficient closure are rebuilt here so nothing
         unpicklable crosses the process boundary.
         """
+        if rho0 is None: # init at ground state by default
+            rho0 = self.model.initial_state(self.backend, self.ops)
+
         drive = self.model.drive(self.ops)
 
         def coeff(t, args):
@@ -164,7 +167,7 @@ class HeomSolver(Solver):
             options={"nsteps": self.nsteps, "progress_bar": "",
                      "store_states": store_states},
         )
-        result = solver.run(self.rho0, self.times, e_ops=list(e_ops))
+        result = solver.run(rho0, self.times, e_ops=list(e_ops))
         if store_states:
             return result.expect, result.states
         return result.expect
