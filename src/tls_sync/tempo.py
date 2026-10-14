@@ -74,7 +74,7 @@ class TempoSolver(Solver):
         return oqupy.pt_tempo_compute(
             bath=oq_bath, start_time=0.0, end_time=self.T_total, parameters=params)
 
-    def _run_one(self, omega_d, prepared, e_ops, store_states):
+    def _run_one(self, omega_d, rho0, prepared, e_ops, store_states):
         """Integrate one drive frequency against the prebuilt process tensor.
 
         ``prepared`` is the process tensor from ``_prepare``. The drive-coefficient

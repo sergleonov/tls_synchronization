@@ -143,7 +143,7 @@ class HeomSolver(Solver):
             ck_imag=list(ck_imag), vk_imag=list(vk_imag), T=T)
 
     # --- per-frequency integration ----------------------------------------- #
-    def _run_one(self, omega_d, prepared, e_ops, store_states):
+    def _run_one(self, omega_d, rho0, prepared, e_ops, store_states):
         """Integrate one drive frequency with HEOM (runs in a worker process).
 
         ``prepared`` is the coefficient tuple from ``_prepare``; both the bath
