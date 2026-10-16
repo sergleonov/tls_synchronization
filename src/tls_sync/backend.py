@@ -127,11 +127,10 @@ class QutipBackend(Backend):
         return state.ptrace(list(keep))
 
     def to_density_matrix(self, state: Any) -> Any:
-        if state.isoper:
+        if state.isket or state.isbra:
+            return qt.ket2dm(state)
+        if state.isherm and state.isoper:
             return state
-        if state.isbra:
-            state = state.dag()
-        return qt.ket2dm(state)
 
 
 class NumpyBackend(Backend):
@@ -191,14 +190,10 @@ class NumpyBackend(Backend):
     def to_density_matrix(self, state: Any) -> Any:
         print(state, state.shape)
         state = qt.Qobj(state)
-        if state.isket:
+        if state.isket or state.isbra:
             return qt.ket2dm(state).full()
-        if state.isherm and state.type == "oper":
+        if state.isherm and state.isoper:
             return state.full()
-
-    def to_qobj(self, state: Any, dims: Sequence[int]) -> Any:
-        rho = self.to_density_matrix(state)
-        return qt.Qobj(rho, dims=[dims, dims])
 
     def ptrace(self, state: Any, keep: Sequence[int],
                dims: Sequence[int] | None = None) -> np.ndarray:
@@ -213,7 +208,7 @@ class NumpyBackend(Backend):
                 "dimensions); a dense array carries no tensor structure to infer them."
             )
         keep = sorted(keep)
-        rho = self.to_qobj(state, dims)
+        rho = qt.Qobj(state, dims=dims)
         return qt.ptrace(rho, keep).full()
 
 
