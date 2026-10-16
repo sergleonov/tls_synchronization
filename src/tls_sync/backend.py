@@ -181,32 +181,20 @@ class NumpyBackend(Backend):
         return zeros
 
     def expect(self, op: Any, state: Any) -> Any:
-        op = np.asarray(op)
-        if isinstance(state, (list, tuple)):
-            states = [np.asarray(s) for s in state]
-        elif np.ndim(state) >= 3:            # stack of density matrices
-            states = list(np.asarray(state))
-        else:                                # one ket or density matrix
-            return self._expect_one(op, state)
-        return np.array([self._expect_one(op, s) for s in states], dtype=complex)
-
-    @staticmethod
-    def _expect_one(op: Any, state: Any) -> complex:
-        op = np.asarray(op)
-        state = np.asarray(state)
-        if state.ndim == 1 or (state.ndim == 2 and 1 in state.shape):
-            psi = state.reshape(-1)
-            return complex(np.vdot(psi, op @ psi))  # <psi|op|psi>
-        return complex(np.trace(op @ state))  # Tr(op rho)
+        op = qt.Qobj(op)
+        if isinstance(state, (list, tuple)) or np.ndim(state) >= 3: # stack of density matrices
+            states = [qt.Qobj(s) for s in state]
+            return qt.expect(op, states)
+        else:  # one ket or density matrix
+            return qt.expect(op, qt.Qobj(state))
 
     def to_density_matrix(self, state: Any) -> Any:
-        state = np.asarray(state, dtype=complex)
-        if state.ndim == 1:
-            return np.outer(state, state.conj())
-        if state.ndim == 2 and 1 in state.shape:
-            psi = state.reshape(-1, 1)
-            return psi @ psi.conj().T
-        return state  # already a (square) density matrix
+        print(state, state.shape)
+        state = qt.Qobj(state)
+        if state.isket:
+            return qt.ket2dm(state).full()
+        if state.isherm and state.type == "oper":
+            return state.full()
 
     def to_qobj(self, state: Any, dims: Sequence[int]) -> Any:
         rho = self.to_density_matrix(state)
@@ -224,17 +212,9 @@ class NumpyBackend(Backend):
                 f"{type(self).__name__}.ptrace requires `dims` (the subsystem "
                 "dimensions); a dense array carries no tensor structure to infer them."
             )
-        n = len(dims)
         keep = sorted(keep)
-        rho = np.asarray(state).reshape(list(dims) + list(dims))
-        # row labels 0..n-1; column labels reuse the row label for traced
-        # subsystems (→ summed) and take a fresh label for kept ones.
-        row = list(range(n))
-        col = [(n + i) if i in keep else i for i in range(n)]
-        out = [i for i in keep] + [n + i for i in keep]
-        result = np.einsum(rho, row + col, out)
-        d_keep = int(np.prod([dims[i] for i in keep])) if keep else 1
-        return result.reshape(d_keep, d_keep)
+        rho = self.to_qobj(state, dims)
+        return qt.ptrace(rho, keep).full()
 
 
 class OqupyBackend(NumpyBackend):
@@ -268,4 +248,5 @@ class OqupyBackend(NumpyBackend):
         if hasattr(state, "expectations"):
             _times, values = state.expectations(np.asarray(op), real=False)
             return values
+        print(super().expect(op, np.asarray(state)))
         return super().expect(op, np.asarray(state))

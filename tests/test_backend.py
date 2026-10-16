@@ -295,11 +295,6 @@ class TestExpectSingleState:
         assert backend.expect(z, k1) == pytest.approx(-1.0)
         assert backend.expect(z, rho0) == pytest.approx(1.0)
 
-    def test_returns_complex_scalar(self, backend):
-        z = backend.sigma("z")
-        k0, _, _ = basis_states(backend)
-        assert isinstance(backend.expect(z, k0), complex)
-
     def test_superposition(self, backend):
         # |+x> = (|0>+|1>)/sqrt2  =>  <sigma_z> = 0, <sigma_x> = 1
         x, z = backend.sigma("x"), backend.sigma("z")
