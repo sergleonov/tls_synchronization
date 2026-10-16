@@ -208,7 +208,7 @@ class NumpyBackend(Backend):
                 "dimensions); a dense array carries no tensor structure to infer them."
             )
         keep = sorted(keep)
-        rho = qt.Qobj(state, dims=dims)
+        rho = qt.Qobj(state, dims=[dims, dims])
         return qt.ptrace(rho, keep).full()
 
 

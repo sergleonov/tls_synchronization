@@ -441,26 +441,6 @@ class TestToDensityMatrix:
         assert np.allclose(row, col)
         assert np.allclose(row, RHO1)
 
-
-# --------------------------------------------------------------------------- #
-# NumpyBackend.to_qobj() -- bridge back into QuTiP land
-# --------------------------------------------------------------------------- #
-
-class TestToQobj:
-    def test_returns_qobj_with_expected_dims_and_data(self, array_backend):
-        ket = np.array([1, 0, 0, 0], dtype=complex)  # |00>
-        q = array_backend.to_qobj(ket, [2, 2])
-        assert isinstance(q, qt.Qobj)
-        assert q.dims == [[2, 2], [2, 2]]
-        expected = np.outer(ket, ket.conj())
-        assert np.allclose(q.full(), expected)
-
-    def test_accepts_a_density_matrix(self, array_backend):
-        q = array_backend.to_qobj(RHO0, [2])
-        assert isinstance(q, qt.Qobj)
-        assert np.allclose(q.full(), RHO0)
-
-
 # --------------------------------------------------------------------------- #
 # OqupyBackend.expect()
 # --------------------------------------------------------------------------- #

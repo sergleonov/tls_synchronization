@@ -34,7 +34,7 @@ def eval_husimi(solver, rho, theta, phi, sel=None, method="avg"):
 
     if not isinstance(rho, qt.Qobj):
         dims = [2 for _ in range(n_tls)]
-        rho = qt.Qobj(rho, dims=dims)
+        rho = qt.Qobj(rho, dims=[dims, dims])
 
     if rho.isket or rho.isbra:
         rho = qt.ket2dm(rho)
@@ -138,7 +138,7 @@ def eval_husimi(solver, rho, theta, phi, sel=None, method="avg"):
         for idx, state in enumerate(states):
             if not isinstance(state, qt.Qobj):
                 dims = [2 for _ in range(n_tls)]
-                state = qt.Qobj(state, dims=dims)
+                state = qt.Qobj(state, dims=[dims, dims])
             entropy_t[idx] = qt.entropy_mutual(state, i, j)
         return entropy_t
 
