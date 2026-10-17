@@ -134,7 +134,7 @@ def test_single_run_from_ground_state():
     assert dyn.expectations.shape == (2, 1, n_t)
     assert dyn.states is not None and len(dyn.states[0]) == n_t
     # collective excitation S+ S- vanishes in the product ground state at t=0
-    assert np.isclose(dyn.expectations[0][0, 0].real, 2.0, atol=1e-9)
+    assert np.isclose(dyn.expectations[0][0, 0].real, 0.0, atol=1e-9)
     assert np.all(np.isfinite(dyn.expectations[0].real))
 
 
@@ -155,8 +155,8 @@ def test_sweep_shapes_order_and_no_states():
     assert dyn.states is None
     assert np.allclose(dyn.omegas, freqs)
     assert np.all(np.isfinite(dyn.expectations[0].real))
-    # every frequency starts in the ground state -> zero excitation at t=0
-    assert np.allclose(dyn.expectations[0][:, 0].real, 2.0, atol=1e-9)
+    # every frequency starts in the grounb = d state -> zero excitation at t=0
+    assert np.allclose(dyn.expectations[0][:, 0].real, 0.0, atol=1e-9)
 
 
 def test_sweep_custom_e_ops():
