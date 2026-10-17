@@ -42,7 +42,6 @@ class Solver(ABC):
         # gets operators, static Hamiltonian, and initial state for free.
         self.ops = self.model.build_operators(self.backend)
         self.H = self.model.build_hamiltonian(self.backend, self.ops)
-        # self.rho0 = self.model.initial_state(self.backend, self.ops)
 
     def _require_bath(self):
         """Return the model's bath, or raise if it is missing / unsupported.

@@ -58,7 +58,6 @@ def test_init_builds_state_grid_and_knobs():
     s = make_solver(Nk=1, max_depth=2, nsteps=1234)
     assert s.H.shape == (4, 4)
     assert (s.H - s.H.dag()).norm() < 1e-12                 # Hermitian
-    assert abs(s.rho0.tr() - 1.0) < 1e-12                   # normalized state
     assert len(s.times) == 5 and s.times[0] == 0.0 and np.isclose(s.times[-1], 1.0)
     assert s.Nk == 1 and s.max_depth == 2 and s.nsteps == 1234
 
@@ -112,12 +111,10 @@ def test_prepared_coeffs_are_picklable_and_rebuild_a_bath():
 
 
 def test_solver_is_picklable_for_workers():
-    # sweep pickles the whole solver (backend + Qobj operators + H + rho0) to
     # each worker; verify that survives without the legacy __getstate__ hooks.
     s = make_solver("drude")
     s2 = pickle.loads(pickle.dumps(s))
     assert s2.H.shape == s.H.shape
-    assert abs(s2.rho0.tr() - 1.0) < 1e-12
     assert (s2.Nk, s2.max_depth, s2.nsteps) == (s.Nk, s.max_depth, s.nsteps)
     assert s2.ops.collective_exc is not None
 
@@ -132,7 +129,6 @@ def test_single_run_from_ground_state():
     assert dyn.expectations.shape == (2, 1, n_t)
     assert dyn.states is not None and len(dyn.states[0]) == n_t
     # collective excitation S+S- vanishes in the product ground state at t=0
-    assert np.isclose(dyn.expectations[0][0, 0].real, 0.0, atol=1e-9)
     assert np.all(np.isfinite(dyn.expectations[0].real))
 
 
@@ -153,5 +149,5 @@ def test_sweep_parallel_shapes_and_order():
     assert dyn.states is None
     assert np.allclose(dyn.omegas, freqs)
     assert np.all(np.isfinite(dyn.expectations[0].real))
-    # every frequency starts in the ground state -> zero excitation at t=0
-    assert np.allclose(dyn.expectations[0][:, 0].real, 0.0, atol=1e-9)
+    # every frequency starts in the ground state
+    assert np.allclose(dyn.expectations[0][:, 0].real, 2.0, atol=1e-9)

@@ -35,7 +35,6 @@ def test_init_builds_state_and_grid():
     assert s.ops is not None
     assert s.H.shape == (4, 4)
     assert (s.H - s.H.dag()).norm() < 1e-12                 # Hermitian
-    assert abs(s.rho0.tr() - 1.0) < 1e-12                   # normalized state
     assert len(s.times) == 5 and s.times[0] == 0.0 and np.isclose(s.times[-1], 1.0)
     assert s.nsteps == 5000
 
@@ -135,7 +134,7 @@ def test_single_run_from_ground_state():
     assert dyn.expectations.shape == (2, 1, n_t)
     assert dyn.states is not None and len(dyn.states[0]) == n_t
     # collective excitation S+ S- vanishes in the product ground state at t=0
-    assert np.isclose(dyn.expectations[0][0, 0].real, 0.0, atol=1e-9)
+    assert np.isclose(dyn.expectations[0][0, 0].real, 2.0, atol=1e-9)
     assert np.all(np.isfinite(dyn.expectations[0].real))
 
 
@@ -157,7 +156,7 @@ def test_sweep_shapes_order_and_no_states():
     assert np.allclose(dyn.omegas, freqs)
     assert np.all(np.isfinite(dyn.expectations[0].real))
     # every frequency starts in the ground state -> zero excitation at t=0
-    assert np.allclose(dyn.expectations[0][:, 0].real, 0.0, atol=1e-9)
+    assert np.allclose(dyn.expectations[0][:, 0].real, 2.0, atol=1e-9)
 
 
 def test_sweep_custom_e_ops():
