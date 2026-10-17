@@ -1,11 +1,11 @@
 """TLS synchronization solver package.
- 
+
 Public API: solver classes are exposed at the top level, e.g.
- 
+
     from tls_sync import MarkovianSolver
- 
+
 Everything else stays under its own module, reached as ``tls_sync.<module>``:
- 
+
     tls_sync.backend.QutipBackend
     tls_sync.model.TLSChainModel
     tls_sync.model.Bath
@@ -22,7 +22,7 @@ from .semiclassical import SemiclassicalSolver
 # The tiered (TLS + quantized cavity) case has no dedicated solver: run a
 # tls_sync.model.TLSCavityModel with MarkovianSolver (the cavity is just another
 # subsystem for qutip.mesolve).
-from . import plotting, utils, backend, model, helpers
+from . import plotting, utils, backend, model, helpers, correlations
 
 __all__ = [
     # solvers
@@ -34,6 +34,7 @@ __all__ = [
     # modules
     "backend",
     "model",
+    "correlations",
     "helpers",
     "plotting",
     "utils",

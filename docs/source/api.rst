@@ -30,10 +30,34 @@ Solver
    :undoc-members:
    :show-inheritance:
 
+Model
+------
+
+.. autoclass:: Model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Backend
+------
+
+.. autoclass:: Backend
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Bath
+------
+
+.. autoclass:: Bath
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 HEOM
 ----
 
-.. autoclass:: HEOM
+.. autoclass:: HeomSolver
    :members:
    :inherited-members:
    :undoc-members:
@@ -42,7 +66,7 @@ HEOM
 TEMPO
 -----
 
-.. autoclass:: TEMPO
+.. autoclass:: TempoSolver
    :members:
    :inherited-members:
    :undoc-members:
@@ -57,10 +81,10 @@ Tiered solver
    :undoc-members:
    :show-inheritance:
 
-Lindblad
+Markovian
 --------
 
-.. autoclass:: Lindblad
+.. autoclass:: MarkovianSolver
    :members:
    :inherited-members:
    :undoc-members:
@@ -74,10 +98,10 @@ Plotting and analysis
    :undoc-members:
    :show-inheritance:
 
-Parallel execution
-==================
+Correlations
+=========
 
-.. automodule:: tls_sync.parallel
+.. automodule:: tls_sync.correlations
    :members:
    :undoc-members:
    :show-inheritance:
@@ -86,6 +110,14 @@ Utilities
 =========
 
 .. automodule:: tls_sync.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Helpers
+=========
+
+.. automodule:: tls_sync.helpers
    :members:
    :undoc-members:
    :show-inheritance:
