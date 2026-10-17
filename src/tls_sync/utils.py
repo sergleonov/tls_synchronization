@@ -63,12 +63,12 @@ def compute_fft(sp_t, omega_d_vals, tlist, dt, n_time, fmax=0.1):
     fft_freqs = np.fft.rfftfreq(N_pad, d=dt)
 
     # limit the plot to observe the features
-    idx_max = np.searchsorted(fft_freqs, fmax) 
+    idx_max = np.searchsorted(fft_freqs, fmax)
 
     fft_data = fft_data[:, :idx_max]
     fft_freqs = fft_freqs[:idx_max]
 
-    return fft_freqs, fft_data  
+    return fft_freqs, fft_data
 
 def find_max(mats):
     """Return the maximum element among a list of matrices.
