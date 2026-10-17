@@ -141,7 +141,7 @@ def test_single_run_from_ground_state():
     # states follow the package [i_omega][i_time] convention (one omega here)
     assert dyn.states is not None and len(dyn.states) == 1 and len(dyn.states[0]) == n_t
     # collective excitation S+S- vanishes in the product ground state at t=0
-    assert np.isclose(dyn.expectations[0][0, 0].real, 2.0, atol=1e-12)
+    assert np.isclose(dyn.expectations[0][0, 0].real, 0.0, atol=1e-12)
     assert np.all(np.isfinite(dyn.expectations[0].real))
     # the classical cavity field lives in extra, indexed [i_omega][i_time]
     alpha = dyn.extra["alpha"]
@@ -174,7 +174,7 @@ def test_sweep_batched_shapes_and_ground():
     alpha = dyn.extra["alpha"]
     assert alpha.shape == (len(freqs), n_t)
     assert np.allclose(alpha[:, 0], 0.0)                     # every frequency starts empty
-    assert np.allclose(dyn.expectations[0][:, 0].real, 2.0, atol=1e-12)  # ground at t=0
+    assert np.allclose(dyn.expectations[0][:, 0].real, 0.0, atol=1e-12)  # ground at t=0
     assert np.all(np.isfinite(dyn.expectations[0].real)) and np.all(np.isfinite(alpha))
 
 

@@ -217,7 +217,7 @@ class TLSChainModel(Model):
                                      self.bath.coupling, self.bath.temperature)
 
     def initial_state(self, backend: Backend, ops: Operators) -> Any:
-        ket = backend.fock(2, 0)
+        ket = backend.fock(2, 1) # ground state
         ket2dm = backend.mul(ket, backend.dag(ket))
         return backend.tensor([ket2dm] * self.n_tls)
 
@@ -394,7 +394,7 @@ class TLSCavityModel(Model):
 
     def initial_state(self, backend: Backend, ops: Operators) -> Any:
         """Product TLS ground state ``|0...0>`` tensored with the cavity vacuum."""
-        ket = backend.fock(2, 0)
+        ket = backend.fock(2, 1) # ground state
         ket2dm = backend.mul(ket, backend.dag(ket))
         return backend.tensor([ket2dm] * self.n_tls + [self._cavity_vacuum(backend)])
 

@@ -104,7 +104,7 @@ def test_single_run_from_ground_state():
     assert dyn.expectations.shape == (2, 1, n_t)
     assert dyn.states is not None and len(dyn.states[0]) == n_t
     # check ground state convention
-    assert np.isclose(dyn.expectations[0][0, 0].real, 2.0, atol=1e-2)
+    assert np.isclose(dyn.expectations[0][0, 0].real, 0.0, atol=1e-2)
     assert np.all(np.isfinite(dyn.expectations[0].real))
 
 
@@ -125,4 +125,4 @@ def test_sweep_parallel_shapes_and_order():
     assert dyn.states is None
     assert np.allclose(dyn.omegas, freqs)
     assert np.all(np.isfinite(dyn.expectations[0].real))
-    assert np.allclose(dyn.expectations[0][:, 0].real, 2.0, atol=1e-2)
+    assert np.allclose(dyn.expectations[0][:, 0].real, 0.0, atol=1e-2)
